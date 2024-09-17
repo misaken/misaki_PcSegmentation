@@ -2,7 +2,7 @@ import numpy as np
 from numpy.linalg import svd, matrix_rank
 import open3d as o3d
 import subprocess
-import pdb, pickle, os, cv2
+import pdb, pickle, os, cv2, time
 from matplotlib import pyplot as plt
 from sklearn.cluster import KMeans
 from scipy.spatial.distance import mahalanobis
@@ -37,6 +37,7 @@ class NDARRAY2VIDEO:
         self.point_array_path = point_array_path # 点群をndarrayに変換したもののpickleファイルのパス
         self.color_labels_path = "color_labels.pkl"
         self.output_dir = "frames"
+        self.colors = None
 
     def create_frame(self, points, frame_number):
         fig = plt.figure()
@@ -73,6 +74,7 @@ class NDARRAY2VIDEO:
         video.release()
     
     def add_colors(self, points, colors, labels):
+        labels -= 1
         points_with_colors = np.zeros((self.num_frames, self.num_points, 6)) #6は、xyz + rgb
         points_with_colors[:, :, :3] = points
         for i in range(self.num_points):
@@ -107,19 +109,23 @@ class NDARRAY2VIDEO:
         # hsvが分割しやすいので、そっちでn分割したあとrgbにする
         hues = np.linspace(0, 1, num_colors, endpoint=False)  # Hueを0から1まで20等分
         self.colors = np.array([self.hsv_to_rgb(h, 1.0, 1.0) for h in hues])  # RGBに変換
-        print(self.colors)
+        print(f"colors = \n{self.colors}")
 
         #with open(self.color_labels_path, "wb") as f:
         #    pickle.dump(colors, f)
     
+    # サンプリングした点を描画
+    def plot_sampled_points(self, samples, colors):
+        
+
     # labels : 点群に対するラベルを与える。ndarrayの一次元配列。ラベルは連番。
     def create(self, labels=None):
         with open(self.point_array_path, "rb") as f:
             points = pickle.load(f)
-        points = points[:20, 2000:3000, :]
+        #points = points[:20, 2000:3000, :] # インデックスが隣接した点の順になっているかの確認のため
         self.num_frames = points.shape[0]
         self.num_points = points.shape[1]
-        if labels:
+        if labels is not None:
             self.create_colors(np.unique(labels).shape[0]) # self.colorsを作成
             points = self.add_colors(points, self.colors, labels) # self.points_with_colorsを作成
 
@@ -129,10 +135,6 @@ class NDARRAY2VIDEO:
             self.create_frame(points[i], i)
         
         self.create_video_from_frames(video_path='output.mp4')
-
-
-
-
 
         print("fin")
 
@@ -271,6 +273,24 @@ def calc_f_norm(A, B):
     return np.sqrt(((A-B)**2).sum())
 
 
+# 基準点からの距離の近さの上位数割の範囲からサンプリング
+def choice_by_distance(pc, zero_idx):
+    p_center_idx = np.random.choice(zero_idx)
+    d = np.linalg.norm(pc - pc[p_center_idx], axis=1)
+    n_points = pc.shape[0]
+    near_idx = np.argsort(d)[:int(n_points*0.1)]
+    sample_idx = np.append(np.random.choice(near_idx, 2, replace=False), p_center_idx)
+    return sample_idx
+
+# def choice_by_distance2(pc, zero_idx):
+#     p_center_idx = np.random.choice(zero_idx)
+#     p_random_idx = np.random.choice(zero_idx)
+
+#     d = np.linalg.norm(pc - pc[p_center_idx], axis=1)
+#     n_points = pc.shape[0]
+#     near_idx = np.argsort(d)[:int(n_points*0.1)]
+#     sample_idx = np.append(np.random.choice(near_idx, 2, replace=False), p_center_idx)
+#     return sample_idx
 #def ransac(data)
 
 
@@ -303,54 +323,72 @@ if __name__ == "__main__":
     # pdb.set_trace()
 
 
-    # #--------------------------------------------------------------------------------------
-    # #ply2ndarray("./data/pointclouds/bodyHands_REGISTRATIONS_A01/", "./A01_pc_array.pkl")
-    # with open("./A01_pc_array.pkl", "rb") as f:
-    #     pc = pickle.load(f)
-    # n_frame = pc.shape[0]
-    # n_points = pc.shape[1]
-    # print(f"n_frame={n_frame}")
+    #--------------------------------------------------------------------------------------
+    #ply2ndarray("./data/pointclouds/bodyHands_REGISTRATIONS_A01/", "./A01_pc_array.pkl")
+    with open("./A01_pc_array.pkl", "rb") as f:
+        pc = pickle.load(f)
+    n_frame = pc.shape[0]
+    n_points = pc.shape[1]
+    print(f"n_frame={n_frame}")
 
-    # # 各フレームの差分からクラスタリング
-    # for i in range(2-1):
-    #     X = pc[i]
-    #     Y = pc[i+1]
-    #     n_clusters = 2
-    #     # 各点が属するクラスターラベル.0がクラス無し
-    #     #   クラス0の範囲からサンプリングするのを繰り返すけど、0の部分だけを取り出すと前のインデックスとの互換がなくなる。
-    #     #   cluster_labelsの0を1, それ以外を0にしたものをマスクにして、点群にかけてあげるとよさげ？
-    #     cluster_label = np.zeros([n_points,], dtype=int)
-    #     for j in range(n_clusters): #クラスター数だけ繰り返す。
-    #         zero_idx = np.where(cluster_label == 0)[0]
-    #         n_sample = 3
-    #         n_iter = 10000
-    #         t = 1.0e-7 #誤差範囲
-    #         d = int(n_points/15) #誤差範囲t以下の点がd個以上であれば正しい剛体変換
-    #         norm_list = np.empty(0)
-    #         for k in range(n_iter):
-    #             random_idx = np.random.choice(zero_idx, n_sample, replace=False)
-    #             random_idx = np.array([1000, 1001, 1002])
-    #             T = svd2T(X[random_idx, :], Y[random_idx, :])
-    #             #print(T)
-    #             Y_pred = rigid_transform(T, X)
-    #             norm = ((Y - Y_pred)**2).sum(axis=1)
-    #             pdb.set_trace()
-    #             np.append(norm_list, norm)
-    #             inlier_idx = norm < t
-    #             n_inlier = sum(inlier_idx)
-    #             if n_inlier > d:
-    #                 #クラスが未定(0)のうち、inlierであったものを新しくラベル付けする
-    #                 cluster_label[inlier_idx * (cluster_label==0)] = j+1
-    #                 print(n_inlier)
-    #                 print(k)
-    #                 break
-    #         else:
-    #             print("can not fix")
-    #         print(f"avg = {norm_list.mean()}\ns^2 = {sum((norm_list - norm_list.mean())**2) / norm_list.shape[0]}")
-    
-    
-    
-    # darray2video = NDARRAY2VIDEO()
-    # ndarray2video.create(create_frame_flg=True)
+    # 各フレームの差分からクラスタリング
+    n_frame = 60
+    skip = 20
+    for i in range(0, n_frame+1-skip, skip):
+    # for i in range(n_frame-1):
+        X = pc[i]
+        Y = pc[i+skip]
+        n_clusters = 5
+        points_for_genT = [] # inlierの個数がしきい値以上の剛体変換を求めるときに使った点
+        # 各点が属するクラスターラベル.0がクラス無し
+        cluster_label = np.zeros([n_points,], dtype=int)
+        label=1
+        for j in range(n_clusters): #クラスター数だけ繰り返す。
+            # pdb.set_trace()
+            print(f"start {j}th iteration. cluster_unique={np.unique(cluster_label)}")
+            zero_idx = np.where(cluster_label == 0)[0]
+            print(f"zero_idx.shape={zero_idx.shape}")
+            if zero_idx.shape[0] < 3:
+                break
+            n_sample = 3
+            n_iter = 10000
+            t = 1.0e-3 #誤差範囲
+            d = n_points//40 #誤差範囲t以下の点がd個以上であれば正しい剛体変換
+            # norm_list = np.empty(0)
+            t_s = time.time()
+            for k in range(n_iter):
+                # クラス0の点からサンプリング
+                # random_idx = np.random.choice(zero_idx, n_sample, replace=False)
+                # 基準点からユークリッド距離がしきい値以下のものから選ぶようにする。
+                random_idx = choice_by_distance(X, zero_idx)
+                # random_idx = np.array([1000, 1001, 1002])
+                T = svd2T(X[random_idx, :], Y[random_idx, :])
+                #print(T)
+                Y_pred = rigid_transform(T, X)
+                norm = ((Y - Y_pred)**2).sum(axis=1)
+                # np.append(norm_list, norm)
+                inlier_idx = norm < t
+                n_inlier = sum(inlier_idx)
+                if n_inlier > d:
+                    #クラスが未定(0)のうち、inlierであったものを新しくラベル付けする
+                    cluster_label[inlier_idx * (cluster_label==0)] = label
+                    print(f"n_inlier={n_inlier}, d={d}")
+                    print(f"label={label},  iter={k}")
+                    print(f"T=\n{np.round(T, 4)}")
+                    points_for_genT.append(X[random_idx])
+                    label += 1
+                    break
+            else:
+                print("can not fix")
+            # print(f"avg = {norm_list.mean()}\ns^2 = {sum((norm_list - norm_list.mean())**2) / norm_list.shape[0]}")
+            t_e = time.time()
+            print(f"time : {t_e - t_s}")
+
+        print(np.unique(cluster_label))
+    print(f"sampled points=\n{points_for_genT}")
     darray2video = NDARRAY2VIDEO("A01_pc_array.pkl")
-    darray2video.create()
+    darray2video.create(labels=cluster_label)
+
+    
+    # darray2video = NDARRAY2VIDEO("A01_pc_array.pkl")
+    # darray2video.create()
