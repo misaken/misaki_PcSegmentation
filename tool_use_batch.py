@@ -37,6 +37,10 @@ class NDARRAY2VIDEO:
         self.point_array_path = point_array_path # 点群をndarrayに変換したもののpickleファイルのパス
         self.color_labels_path = "color_labels.pkl"
         self.output_dir = "frames"
+        self.colors = None
+
+        subprocess.run(["rm", "frames", "-r"])
+        os.makedirs(self.output_dir)
 
     def create_frame(self, points, frame_number):
         fig = plt.figure()
@@ -72,11 +76,15 @@ class NDARRAY2VIDEO:
 
         video.release()
     
-    def add_colors(self, points, colors, labels):
+    def add_colors(self, points, labels):
+        # クラスタ0が残っている場合はlabelsをそのままself.colorsのインデックスとする。
+        # クラスタ0がない場合は、labelsから1引いたものをインデックスにする。
+        if 0 not in np.unique(labels):
+            labels -= 1
         points_with_colors = np.zeros((self.num_frames, self.num_points, 6)) #6は、xyz + rgb
         points_with_colors[:, :, :3] = points
         for i in range(self.num_points):
-            points_with_colors[:, i, 3:] = colors[labels[i], :]
+            points_with_colors[:, i, 3:] = self.colors[labels[i], :]
         print(points_with_colors.shape)
         return points_with_colors
     
@@ -107,11 +115,39 @@ class NDARRAY2VIDEO:
         # hsvが分割しやすいので、そっちでn分割したあとrgbにする
         hues = np.linspace(0, 1, num_colors, endpoint=False)  # Hueを0から1まで20等分
         self.colors = np.array([self.hsv_to_rgb(h, 1.0, 1.0) for h in hues])  # RGBに変換
-        print(self.colors)
+        print(f"colors = \n{self.colors}")
 
         #with open(self.color_labels_path, "wb") as f:
         #    pickle.dump(colors, f)
     
+    # サンプリングした点を描画
+    def plot_sampled_points(self, samples, label_idx):
+        if self.colors is None:
+            self.create_colors(label_idx.shape[0]) # self.colorsを作成
+        # pdb.set_trace()
+        # points = self.add_colors(samples, labels)
+        fig = plt.figure()
+        ax = fig.add_subplot(111, projection='3d')
+        ax.set_xlim([-1, 1])
+        ax.set_ylim([-1, 1])
+        ax.set_zlim([-1, 1])
+        # if points.shape[1]==6:
+        #     ax.scatter(points[:, 0], -points[:, 2], points[:, 1], c=points[:, 3:], marker='o', s=1)
+        # else:
+        #     ax.scatter(points[:, 0], -points[:, 2], points[:, 1], marker='o', s=1)
+        T_n = samples.shape[0] # 求めた剛体変換の個数
+        sampled_p_n = samples.shape[1] # 剛体変換を求めるのに用いた点の数
+        # pdb.set_trace()
+        for i in range(T_n):
+            if 0 in label_idx:
+                ax.scatter(samples[i, :, 0], -samples[i, :, 2], samples[i, :, 1], c=[self.colors[i+1]], alpha=1, marker='o', s=10)
+            else:
+                ax.scatter(samples[i, :, 0], -samples[i, :, 2], samples[i, :, 1], c=[self.colors[i]], alpha=1,  marker='o', s=10)
+        ax.set_title("sampled points")
+        output_path = os.path.join(self.output_dir, "sampled_points.png")
+        plt.savefig(output_path)
+        plt.close()
+
     # labels : 点群に対するラベルを与える。ndarrayの一次元配列。ラベルは連番。
     def create(self, labels=None):
         with open(self.point_array_path, "rb") as f:
@@ -120,20 +156,16 @@ class NDARRAY2VIDEO:
         self.num_frames = points.shape[0]
         self.num_points = points.shape[1]
         if labels is not None:
-            self.create_colors(np.unique(labels).shape[0]) # self.colorsを作成
-            points = self.add_colors(points, self.colors, labels) # self.points_with_colorsを作成
+            if self.colors is None:
+                self.create_colors(np.unique(labels).shape[0]) # self.colorsを作成
+            points = self.add_colors(points, labels) # points_with_colorsを作成
 
-        subprocess.run(["rm", "frames", "-r"])
-        os.makedirs(self.output_dir)
+        # subprocess.run(["rm", "frames", "-r"])
+        # os.makedirs(self.output_dir)
         for i in range(self.num_frames):
             self.create_frame(points[i], i)
         
         self.create_video_from_frames(video_path='output.mp4')
-
-
-
-
-
         print("fin")
 
 
