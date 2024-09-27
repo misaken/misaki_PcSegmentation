@@ -1,9 +1,10 @@
 
-import os, pickle, subprocess, cv2
+import os, pickle, subprocess, cv2, pdb, torch
 import numpy as np
 import open3d as o3d
 from numpy.linalg import svd
 from matplotlib import pyplot as plt
+from matplotlib.lines import Line2D
 
 #点群データをndarrayにして、pickleで保存
 def ply2ndarray(data_path, pkl_path):
@@ -22,19 +23,6 @@ def ply2ndarray(data_path, pkl_path):
     #print(points_array.shape)
 
 
-def gen_iter_n(p, r_out):
-    """
-    サンプリングの繰り返し回数を求める
-    
-    Args:
-        p: k回サンプリングして、少なくとも一回は外れ値なしのサンプルのみを得ることを保証する確率
-        r_out: 全体に対して、外れ値が占める割合
-    Returns:
-        int: 繰り返し回数k
-    """
-    return 12
-
-
 #ndarrayから動画に
 class NDARRAY2VIDEO:
     def __init__(self, point_array_path):
@@ -44,16 +32,34 @@ class NDARRAY2VIDEO:
         self.color_labels_path = "color_labels.pkl"
         self.output_dir = "frames"
         self.colors = None
+        self.custom_lines = None
 
         subprocess.run(["rm", "frames", "-r"])
         os.makedirs(self.output_dir)
 
     def create_frame(self, points, frame_number):
+        # fig = plt.figure()
+        # ax = fig.add_subplot(111, projection='3d')
+        # pdb.set_trace()
+        # if points.shape[1]==6:
+        #     ax.scatter(points[:, 0], -points[:, 2], points[:, 1], c=points[:, 3:], marker='o', s=1)
+        # else:
+        #     ax.scatter(points[:, 0], -points[:, 2], points[:, 1], marker='o', s=1)
+        # ax.set_xlim([-1, 1])
+        # ax.set_ylim([-1, 1])
+        # ax.set_zlim([-1, 1])
+        # ax.set_title(f'Frame {frame_number}')
+        
+        # ax.legend()
+        # output_path = os.path.join(self.output_dir, f'frame_{frame_number:04d}.png')
+        # plt.savefig(output_path)
+        # plt.close()
+        # ----------------ここ以下が変更したやつ
         fig = plt.figure()
         ax = fig.add_subplot(111, projection='3d')
         # pdb.set_trace()
-        if points.shape[1]==6:
-            ax.scatter(points[:, 0], -points[:, 2], points[:, 1], c=points[:, 3:], marker='o', s=1)
+        if points.shape[1]==7:
+            ax.scatter(points[:, 0], -points[:, 2], points[:, 1], c=points[:, 3:6], marker='o', s=1, label=points[:, 6])
         else:
             ax.scatter(points[:, 0], -points[:, 2], points[:, 1], marker='o', s=1)
         ax.set_xlim([-1, 1])
@@ -61,6 +67,14 @@ class NDARRAY2VIDEO:
         ax.set_zlim([-1, 1])
         ax.set_title(f'Frame {frame_number}')
         
+        # custom_lines = [
+        #     Line2D([0], [0], marker='o', color=[1, 0, 0], label='Label 0', markersize=10, linestyle='None'),
+        #     Line2D([0], [0], marker='o', color=[0, 1, 0], label='Label 1', markersize=10, linestyle='None')
+        # ]
+
+        # カスタム凡例を表示
+        # ax.legend(handles=custom_lines)
+        ax.legend()
         output_path = os.path.join(self.output_dir, f'frame_{frame_number:04d}.png')
         plt.savefig(output_path)
         plt.close()
@@ -88,10 +102,17 @@ class NDARRAY2VIDEO:
         # クラスタ0がない場合は、labelsから1引いたものをインデックスにする。
         if 0 not in np.unique(labels):
             labels -= 1
-        points_with_colors = np.zeros((self.num_frames, self.num_points, 6)) #6は、xyz + rgb
+        # points_with_colors = np.zeros((self.num_frames, self.num_points, 6)) #6は、xyz + rgb
+        # points_with_colors[:, :, :3] = points
+        # for i in range(self.num_points):
+        #     points_with_colors[:, i, 3:] = self.colors[labels[i], :]
+        # print(points_with_colors.shape)
+        # return points_with_colors
+        points_with_colors = np.zeros((self.num_frames, self.num_points, 7)) #6は、xyz + rgb
         points_with_colors[:, :, :3] = points
         for i in range(self.num_points):
-            points_with_colors[:, i, 3:] = self.colors[labels[i], :]
+            points_with_colors[:, i, 3:6] = self.colors[labels[i], :]
+            points_with_colors[:, i, 6] = labels[i]
         print(points_with_colors.shape)
         return points_with_colors
     
@@ -130,6 +151,7 @@ class NDARRAY2VIDEO:
     # サンプリングした点を描画
     def plot_sampled_points(self, samples, label_idx):
         if self.colors is None:
+            pdb.set_trace()
             self.create_colors(label_idx.shape[0]) # self.colorsを作成
         # pdb.set_trace()
         # points = self.add_colors(samples, labels)
@@ -242,20 +264,32 @@ def gen_T(r,t):
 #pyplotの座標の表現が行ベクトルで各点を表しているので、列ベクトルに修正した後変換したものをもとの形で返す。
 def rigid_transform(T, X):
     # Tは同次座標, Xはpyplotで描画する前提の点集合。
-    num_data = X.shape[0]
+    n_data = X.shape[0]
     X_T = X.T
-    ones_vector = np.ones([1, num_data])
+    ones_vector = np.ones([1, n_data])
     X_ex = np.concatenate([X_T, ones_vector], 0)
     transformed = T @ X_ex
     return transformed[:-1, ].T
+
+#pyplotの座標の表現が行ベクトルで各点を表しているので、列ベクトルに修正した後変換したものをもとの形で返す。
+def rigid_transform_batch(T, X):
+    batch_size = T.shape[0]
+    # Tは同次座標, Xはpyplotで描画する前提の点集合。
+    n_data = X.shape[0]
+    X_T = X.T
+    ones_vector = np.ones([1, n_data])
+    X_ex = np.concatenate([X_T, ones_vector], 0) # 同次座標系にする
+    X_ex = X_ex.reshape([1, 4, n_data]).repeat(batch_size, axis=0)
+    transformed = (T @ X_ex)[:, :-1, :].transpose(0, 2, 1)
+    return transformed
 
 def svd2T(X, Y):
     # pdb.set_trace()
     X = X.T
     Y = Y.T
-    num_data = X.shape[1]
-    X_centroid = (np.sum(X, axis=1) / num_data).reshape(3,1)
-    Y_centroid = (np.sum(Y, axis=1) / num_data).reshape(3,1)
+    sample_size = X.shape[1]
+    X_centroid = (np.sum(X, axis=1) / sample_size).reshape(3,1)
+    Y_centroid = (np.sum(Y, axis=1) / sample_size).reshape(3,1)
     X_, Y_ = X - X_centroid, Y - Y_centroid
     A = X_ @ Y_.T
     u, s, v = svd(A)
@@ -267,7 +301,7 @@ def svd2T(X, Y):
     #回転行列の行列式が-1の場合は反射になっているので、その時の対処
     #特異値の一つが0の場合は、その対応するvの符号を反転する
     if -1.10000<=detR<=0.98888:
-        if sum(s <= 1.0e-10) != 1:
+        if sum(s <= 1.0e-10) != 1: # 正しい剛体変換が得られない場合はinlierが少なくなるだけなので放置
             print("can not find R")
         else:
             reflect_index = np.where(s <= 1.0e-10)
@@ -281,15 +315,98 @@ def svd2T(X, Y):
 
     return T
 
+
+def svd2T_batch(X:np.ndarray, Y: np.ndarray):
+    """
+    バッチを用いて特異値分解で剛体変換を求める
+    Args:
+        X,Y: (batch_size, 3, 3)
+    Return:
+        np.ndarray: (batch_size, 4, 4)
+    """
+    X = X.transpose(0, 2, 1)
+    Y = Y.transpose(0, 2, 1)
+    if torch.cuda.is_available():
+        device = torch.device("cuda")
+    else:
+        device = torch.device("cpu")
+    X = torch.tensor(X).to(device)
+    Y = torch.tensor(Y).to(device)
+    sample_size = X.shape[2]
+    batch_size = X.shape[0]
+    # X_centroid = (np.sum(X, axis=1) / sample_size).reshape(3,1)
+    # Y_centroid = (np.sum(Y, axis=1) / sample_size).reshape(3,1)
+    X_centroid = (torch.sum(X, dim=2) / sample_size).reshape(batch_size, 3, 1)
+    Y_centroid = (torch.sum(Y, dim=2) / sample_size).reshape(batch_size, 3, 1)
+    X_, Y_ = X - X_centroid, Y - Y_centroid
+    # A = X_ @ Y_.T
+    A = torch.matmul(X_, Y_.transpose(2, 1))
+    A = A.to(device)
+    #u, s, v = svd(A)
+    u, s, vT = torch.linalg.svd(A, full_matrices=True)
+    # pdb.set_trace()
+    
+    # R = v.T @ u.T
+    R = torch.bmm(vT.transpose(1, 2), u.transpose(1, 2))
+    detR = torch.linalg.det(R)
+    #print(f"det(R) = {detR}  s={s} vT={vT}")
+    #回転行列の行列式が-1の場合は反射になっているので、その時の対処
+    #特異値の一つが0の場合は、その対応するvの符号を反転する
+    detR_int = torch.round(detR).to(torch.int)
+    reflect_index = torch.where(detR_int == -1)[0]
+    error_n = 0
+    for i in reflect_index:
+        if sum(s[i] <= 1.0e-10) != 1:
+            # print("can not find R")
+            error_n += 1
+        else:
+            sig_change_index = torch.where(s[i] <= 1.0e-10)
+            vT[sig_change_index] = vT[sig_change_index] * -1
+            # R = vT.T @ u.T
+    R = torch.bmm(vT.transpose(1, 2), u.transpose(1, 2))
+    t = (Y_centroid - R @ X_centroid).reshape(batch_size, 3)
+    # t = (Y_centroid - R @ X_centroid)
+    T = torch.stack([torch.eye(4) for _ in range(batch_size)])
+    T[:, :3, :3] = R
+    T[:, :3, 3] = t
+    print(f"could not find R : {error_n}") if error_n != 0 else None
+
+    return T.numpy()
+
+
 def calc_f_norm(A, B):
     return np.sqrt(((A-B)**2).sum())
 
 
 # 基準点からの距離の近さの上位数割の範囲からサンプリング
-def choice_by_distance(pc, zero_idx):
+def sampling_by_distance(pc, zero_idx, sample_size):
     p_center_idx = np.random.choice(zero_idx)
     d = np.linalg.norm(pc - pc[p_center_idx], axis=1)
     n_points = pc.shape[0]
     near_idx = np.argsort(d)[:int(n_points*0.1)]
-    sample_idx = np.append(np.random.choice(near_idx, 2, replace=False), p_center_idx)
+    sample_idx = np.append(np.random.choice(near_idx, sample_size-1, replace=False), p_center_idx)
     return sample_idx
+
+def sampling_by_distance_batch(pc, zero_idx, batch_size, sample_size):
+    n_points = pc.shape[0]
+    p_center_idx = np.random.choice(zero_idx, size=batch_size)
+    d = np.linalg.norm(pc - pc[p_center_idx].reshape([batch_size, 1, 3]), axis=2) # d:(batch_size, n_data)
+    near_idx = np.argsort(d)[:, :int(n_points*0.3)]
+    sample_idx = np.append(np.array([np.random.choice(row, size=sample_size-1, replace=False) for row in near_idx]), p_center_idx.reshape([batch_size, 1]), axis=1)
+    return sample_idx
+
+
+
+
+def gen_iter_n(p: float=0.99, r_out: float=0.98) -> int:
+    """
+    サンプリングの繰り返し回数を求める
+    
+    Args:
+        p: k回サンプリングして、少なくとも一回は外れ値なしのサンプルのみを得ることを保証する確率
+        r_out: 全体に対して、外れ値が占める割合
+    Returns:
+        int: 繰り返し回数k
+    """
+    k = int(np.log(1-p)/np.log(1-(1-r_out)**3))
+    return k
