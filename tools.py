@@ -67,8 +67,7 @@ class NDARRAY2VIDEO:
         ax.set_zlim([-1, 1])
         ax.set_title(f'Frame {frame_number}')
 
-        # カスタム凡例を表示
-        # ax.legend(handles=self.custom_lines, loc="upper left")
+        # 凡例表示
         fig.legend(handles=self.custom_lines, loc="upper left")
         output_path = os.path.join(self.output_dir, f'frame_{frame_number:04d}.png')
         plt.savefig(output_path)
@@ -148,7 +147,7 @@ class NDARRAY2VIDEO:
         # ]
         hues = np.linspace(0, 1, num_colors, endpoint=False)  # Hueを0から1まで20等分
         self.colors = np.array([self.hsv_to_rgb(h, 1.0, 1.0) for h in hues])  # RGBに変換
-        if 0 in unique_labels:
+        if 0 in unique_labels: # matplotのlegendを設定
             self.custom_lines = [Line2D([0], [0], marker='o', color=self.colors[l], label=l, markersize=5, linestyle='None') for l in unique_labels]
         else:
             self.custom_lines = [Line2D([0], [0], marker='o', color=self.colors[l-1], label=l, markersize=5, linestyle='None') for l in unique_labels]

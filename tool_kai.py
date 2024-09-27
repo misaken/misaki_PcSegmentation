@@ -117,14 +117,12 @@ if __name__ == "__main__":
     t = 1.0e-3 #誤差範囲
     # d = n_points//20 #誤差範囲t以下の点がd個以上であれば正しい剛体変換
     batch_size = 10000
-    n_clusters = 2
+    n_clusters = 7
     sample_size = 3
     for i in range(first_frame, first_frame+n_frame+1-skip, skip):
     # for i in range(n_frame-1):
         X = pc[i]
         Y = pc[i+skip-1]
-        # n_iter = 10000
-        n_iter = gen_iter_n(0.99, 0.95)
         points_for_genT = np.empty([0, sample_size, 3], dtype=int) # inlierの個数がしきい値以上の剛体変換を求めるときに使った点
         # 各点が属するクラスターラベル初期化.0がクラス無し
         cluster_labels = np.zeros([n_points,], dtype=int)
@@ -135,10 +133,11 @@ if __name__ == "__main__":
             if zero_idx.shape[0] < sample_size:
                 print("The number of label 0 is smaller than sample size.")
                 break
-            print(f"########    start to calc {j+1}th cluster. cluster_unique={np.unique(cluster_labels)}, label 0 num: {zero_idx.shape[0]}")
+            print(f"########    start to calc {j+1}th cluster. cluster_unique={np.unique(cluster_labels)}, label 0 num: {zero_idx.shape[0]}    ########")
             most_fitted_n_inlier = 0
             most_fitted_inlier_idx: bool = None # zero_idxに対するinlierのboolean
             most_fitted_T = None
+            n_iter = gen_iter_n(0.99, 0.95)
             t_s = time.time()
             for k in range(n_iter // batch_size+1):
                 print(f"iteration:  {k+1} / {n_iter // batch_size+1}")
@@ -184,7 +183,7 @@ if __name__ == "__main__":
     
     
     darray2video = NDARRAY2VIDEO("A01_pc_array.pkl")
-    # darray2video.plot_sampled_points(points_for_genT, np.unique(cluster_labels))
+    darray2video.plot_sampled_points(points_for_genT, np.unique(cluster_labels))
     darray2video.create(labels=cluster_labels)
 
     
