@@ -117,7 +117,7 @@ if __name__ == "__main__":
     t = 1.0e-3 #誤差範囲
     # d = n_points//20 #誤差範囲t以下の点がd個以上であれば正しい剛体変換
     batch_size = 10000
-    n_clusters = 3
+    n_clusters = 2
     sample_size = 3
     for i in range(first_frame, first_frame+n_frame+1-skip, skip):
     # for i in range(n_frame-1):
@@ -184,7 +184,7 @@ if __name__ == "__main__":
     
     
     darray2video = NDARRAY2VIDEO("A01_pc_array.pkl")
-    darray2video.plot_sampled_points(points_for_genT, np.unique(cluster_labels))
+    # darray2video.plot_sampled_points(points_for_genT, np.unique(cluster_labels))
     darray2video.create(labels=cluster_labels)
 
     

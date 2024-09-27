@@ -66,15 +66,10 @@ class NDARRAY2VIDEO:
         ax.set_ylim([-1, 1])
         ax.set_zlim([-1, 1])
         ax.set_title(f'Frame {frame_number}')
-        
-        # custom_lines = [
-        #     Line2D([0], [0], marker='o', color=[1, 0, 0], label='Label 0', markersize=10, linestyle='None'),
-        #     Line2D([0], [0], marker='o', color=[0, 1, 0], label='Label 1', markersize=10, linestyle='None')
-        # ]
 
         # カスタム凡例を表示
-        # ax.legend(handles=custom_lines)
-        ax.legend()
+        # ax.legend(handles=self.custom_lines, loc="upper left")
+        fig.legend(handles=self.custom_lines, loc="upper left")
         output_path = os.path.join(self.output_dir, f'frame_{frame_number:04d}.png')
         plt.savefig(output_path)
         plt.close()
@@ -138,21 +133,34 @@ class NDARRAY2VIDEO:
         if i == 5:
             return v, p, q
 
-    # 任意の個数のグラデーションをもつ色を作る
-    def create_colors(self, num_colors):
+    # # 任意の個数のグラデーションをもつ色を作る
+    # def create_colors(self, num_colors):
+    #     # hsvが分割しやすいので、そっちでn分割したあとrgbにする
+    #     hues = np.linspace(0, 1, num_colors, endpoint=False)  # Hueを0から1まで20等分
+    #     self.colors = np.array([self.hsv_to_rgb(h, 1.0, 1.0) for h in hues])  # RGBに変換
+    #     print(f"colors = \n{self.colors}")
+    def create_colors(self, unique_labels):
         # hsvが分割しやすいので、そっちでn分割したあとrgbにする
+        num_colors = unique_labels.shape[0]
+        # self.custom_lines = [
+        #     Line2D([0], [0], marker='o', color=[1, 0, 0], label='Label 0', markersize=10, linestyle='None'),
+        #     Line2D([0], [0], marker='o', color=[0, 1, 0], label='Label 1', markersize=10, linestyle='None')
+        # ]
         hues = np.linspace(0, 1, num_colors, endpoint=False)  # Hueを0から1まで20等分
         self.colors = np.array([self.hsv_to_rgb(h, 1.0, 1.0) for h in hues])  # RGBに変換
+        if 0 in unique_labels:
+            self.custom_lines = [Line2D([0], [0], marker='o', color=self.colors[l], label=l, markersize=5, linestyle='None') for l in unique_labels]
+        else:
+            self.custom_lines = [Line2D([0], [0], marker='o', color=self.colors[l-1], label=l, markersize=5, linestyle='None') for l in unique_labels]
         print(f"colors = \n{self.colors}")
 
-        #with open(self.color_labels_path, "wb") as f:
-        #    pickle.dump(colors, f)
+
     
     # サンプリングした点を描画
     def plot_sampled_points(self, samples, label_idx):
         if self.colors is None:
-            pdb.set_trace()
-            self.create_colors(label_idx.shape[0]) # self.colorsを作成
+            # self.create_colors(label_idx.shape[0]) # self.colorsを作成
+            self.create_colors(label_idx)
         # pdb.set_trace()
         # points = self.add_colors(samples, labels)
         fig = plt.figure()
@@ -186,7 +194,7 @@ class NDARRAY2VIDEO:
         self.num_points = points.shape[1]
         if labels is not None:
             if self.colors is None:
-                self.create_colors(np.unique(labels).shape[0]) # self.colorsを作成
+                self.create_colors(np.unique(labels)) # self.colorsを作成
             points = self.add_colors(points, labels) # points_with_colorsを作成
 
         # subprocess.run(["rm", "frames", "-r"])
