@@ -160,6 +160,8 @@ class NDARRAY2VIDEO:
         if self.colors is None:
             # self.create_colors(label_idx.shape[0]) # self.colorsを作成
             self.create_colors(label_idx)
+        elif self.colors.shape[0] != label_idx.shape[0]: # すでに作ったself.colorsと、渡されたlabel_idxのサイズが異なる場合は再度生成
+            self.create_colors(label_idx)
         # pdb.set_trace()
         # points = self.add_colors(samples, labels)
         fig = plt.figure()
@@ -184,24 +186,35 @@ class NDARRAY2VIDEO:
         plt.savefig(output_path)
         plt.close()
 
-    # labels : 点群に対するラベルを与える。ndarrayの一次元配列。ラベルは連番。
-    def create(self, labels=None):
+    def create(self, labels: np.ndarray=None, frame_idx: list=None, create_video: bool=True) -> None:
+        """ 複数の点群から動画を生成
+        Args:
+            labels : 点に対する一次配列のラベル。Noneの場合はラベルなしで描画。
+            frame_idx: 描画するフレームを指定。Noneの場合は全フレーム描画。
+            create_video: 動画を生成するか否か。Falseの場合はフレームのみ生成。
+        """
         with open(self.point_array_path, "rb") as f:
             points = pickle.load(f)
-        #points = points[:20, 2000:3000, :] # インデックスが隣接した点の順になっているかの確認のため
         self.num_frames = points.shape[0]
         self.num_points = points.shape[1]
         if labels is not None:
             if self.colors is None:
                 self.create_colors(np.unique(labels)) # self.colorsを作成
+            elif self.colors.shape[0] != np.unique(labels).shape[0]: # すでに作ったself.colorsと、渡されたlabel_idxのサイズが異なる場合は再度生成
+                self.create_colors(np.unique(labels))
             points = self.add_colors(points, labels) # points_with_colorsを作成
 
         # subprocess.run(["rm", "frames", "-r"])
         # os.makedirs(self.output_dir)
-        for i in range(self.num_frames):
-            self.create_frame(points[i], i)
+        if frame_idx == None:
+            for i in range(self.num_frames):
+                self.create_frame(points[i], i)
+        else:
+            for i in frame_idx:
+                self.create_frame(points[i], i)
         
-        self.create_video_from_frames(video_path='output.mp4')
+        if create_video:
+            self.create_video_from_frames(video_path='output.mp4')
         print("fin")
 
 

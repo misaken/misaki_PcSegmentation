@@ -1,0 +1,13 @@
+#### frameの画像ファイルすべての番号部分を、連番になるように振り直す
+
+#!/bin/bash
+
+counter=1
+
+for file in ./frames/frame_*.png; do
+  new_filename=$(printf "./frames/frame_%03d.png" "$counter")
+
+  mv "$file" "$new_filename"
+
+  counter=$((counter + 1))
+done
