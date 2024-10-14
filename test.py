@@ -1,8 +1,8 @@
-first_frame = 80
-n_frame = 40
-skip = 5
-for i in range(first_frame, first_frame+n_frame+1-skip, skip):
-    print(i, i+skip)
+import pickle
+import numpy as np
 
-for i in range(skip, n_frame+1, skip):
-    print(i)
+with open("all_labels_0_100.pkl", "rb") as f:
+    a = pickle.load(f)
+
+a = np.array(a)
+print(a.shape)

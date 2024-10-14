@@ -1,5 +1,5 @@
 
-import os, pickle, subprocess, cv2, pdb, torch
+import os, pickle, subprocess, cv2, pdb, torch, sys
 import numpy as np
 import open3d as o3d
 from numpy.linalg import svd
@@ -25,17 +25,26 @@ def ply2ndarray(data_path, pkl_path):
 
 #ndarrayから動画に
 class NDARRAY2VIDEO:
-    def __init__(self, point_array_path):
+    def __init__(self, point_array_path, output_dir_path):
         self.num_frames = None
         self.num_points = None
         self.point_array_path = point_array_path # 点群をndarrayに変換したもののpickleファイルのパス
-        self.color_labels_path = "color_labels.pkl"
-        self.output_dir = "frames"
+        # self.color_labels_path = "color_labels.pkl"
+        self.output_dir = output_dir_path
         self.colors = None
         self.custom_lines = None
 
-        subprocess.run(["rm", "frames", "-r"])
-        os.makedirs(self.output_dir)
+        if os.path.exists(self.output_dir):
+            y_n = input(f"{self.output_dir} is already exists. Overwrite? (y/n)    ")
+            while y_n != "y" and y_n != "n":
+                y_n = input("enter y or n.    ")
+            if y_n == "y":
+                subprocess.run(["rm", self.output_dir, "-r"])
+                os.makedirs(self.output_dir)
+            elif y_n == "n":
+                sys.exit(0)
+        else:
+            os.makedirs(self.output_dir)
 
     def create_frame(self, points, frame_number):
         # fig = plt.figure()
@@ -354,12 +363,9 @@ def svd2T_batch(X:np.ndarray, Y: np.ndarray):
     Y = torch.tensor(Y).to(device)
     sample_size = X.shape[2]
     batch_size = X.shape[0]
-    # X_centroid = (np.sum(X, axis=1) / sample_size).reshape(3,1)
-    # Y_centroid = (np.sum(Y, axis=1) / sample_size).reshape(3,1)
     X_centroid = (torch.sum(X, dim=2) / sample_size).reshape(batch_size, 3, 1)
     Y_centroid = (torch.sum(Y, dim=2) / sample_size).reshape(batch_size, 3, 1)
     X_, Y_ = X - X_centroid, Y - Y_centroid
-    # A = X_ @ Y_.T
     A = torch.matmul(X_, Y_.transpose(2, 1))
     A = A.to(device)
     #u, s, v = svd(A)
