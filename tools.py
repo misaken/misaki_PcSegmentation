@@ -25,7 +25,13 @@ def ply2ndarray(data_path, pkl_path):
 
 #ndarrayから動画に
 class NDARRAY2VIDEO:
-    def __init__(self, point_array_path, output_dir_path):
+    def __init__(self, point_array_path, output_dir_path, dir_rm=True):
+        """ ndarrayをプロット、動画生成
+        Args:
+            point_array_path(str): 点群ndarrayのpklパス
+            output_dir_path(str): 結果の出力パス
+            dir_rm(bool): フォルダを作り直すか、上書きするか。Trueで作り直し。
+        """
         self.num_frames = None
         self.num_points = None
         self.point_array_path = point_array_path # 点群をndarrayに変換したもののpickleファイルのパス
@@ -33,40 +39,23 @@ class NDARRAY2VIDEO:
         self.output_dir = output_dir_path
         self.colors = None
         self.custom_lines = None
-
-        if os.path.exists(self.output_dir):
-            y_n = input(f"{self.output_dir} is already exists. Overwrite? (y/n)    ")
-            while y_n != "y" and y_n != "n":
-                y_n = input("enter y or n.    ")
-            if y_n == "y":
-                subprocess.run(["rm", self.output_dir, "-r"])
+        
+        if dir_rm:
+            if os.path.exists(self.output_dir):
+                y_n = input(f"{self.output_dir} is already exists. Overwrite? (y/n)    ")
+                while y_n != "y" and y_n != "n":
+                    y_n = input("enter y or n.    ")
+                if y_n == "y":
+                    subprocess.run(["rm", self.output_dir, "-r"])
+                    os.makedirs(self.output_dir)
+                elif y_n == "n":
+                    sys.exit(0)
+            else:
                 os.makedirs(self.output_dir)
-            elif y_n == "n":
-                sys.exit(0)
-        else:
-            os.makedirs(self.output_dir)
 
     def create_frame(self, points, frame_number):
-        # fig = plt.figure()
-        # ax = fig.add_subplot(111, projection='3d')
-        # pdb.set_trace()
-        # if points.shape[1]==6:
-        #     ax.scatter(points[:, 0], -points[:, 2], points[:, 1], c=points[:, 3:], marker='o', s=1)
-        # else:
-        #     ax.scatter(points[:, 0], -points[:, 2], points[:, 1], marker='o', s=1)
-        # ax.set_xlim([-1, 1])
-        # ax.set_ylim([-1, 1])
-        # ax.set_zlim([-1, 1])
-        # ax.set_title(f'Frame {frame_number}')
-        
-        # ax.legend()
-        # output_path = os.path.join(self.output_dir, f'frame_{frame_number:04d}.png')
-        # plt.savefig(output_path)
-        # plt.close()
-        # ----------------ここ以下が変更したやつ
         fig = plt.figure()
         ax = fig.add_subplot(111, projection='3d')
-        # pdb.set_trace()
         if points.shape[1]==7:
             ax.scatter(points[:, 0], -points[:, 2], points[:, 1], c=points[:, 3:6], marker='o', s=1, label=points[:, 6])
         else:
@@ -162,8 +151,6 @@ class NDARRAY2VIDEO:
             self.custom_lines = [Line2D([0], [0], marker='o', color=self.colors[l-1], label=l, markersize=5, linestyle='None') for l in unique_labels]
         print(f"colors = \n{self.colors}")
 
-
-    
     # サンプリングした点を描画
     def plot_sampled_points(self, samples, label_idx):
         if self.colors is None:

@@ -7,13 +7,14 @@
 # 結果の出力先は、frame_change_deltaフォルダ。各点のラベルの履歴は、label_history_change_delta.pkl
 ##########################################################################################################################################################
 import numpy as np
-import pdb, pickle, time, sys
+import pdb, pickle, time, sys, re
 
 from tools import *
 
 if __name__ == "__main__":
     t_s = time.time()
-    pc_array_path = "./data/pointclouds/bodyHands_REGISTRATIONS_A01/A01_pc_array.pkl"
+    pc_array_path = "./data/pointclouds/bodyHands_REGISTRATIONS_A04/A04_pc_array.pkl"
+    data_name = re.search(r'([^/]+)(?=\.pkl$)', pc_array_path).group(1)
 
     with open(pc_array_path, "rb") as f:
         pc = pickle.load(f)
@@ -23,7 +24,7 @@ if __name__ == "__main__":
     # 各フレームの差分からクラスタリング
     first_frame = 0
     end_frame = n_frame - 1 # 最終フレームのインデックス
-    # end_frame = 200
+    # end_frame = 30
     skip = 10
     t = 1.0e-3 #誤差範囲
     # d = n_points//20 #誤差範囲t以下の点がd個以上であれば正しい剛体変換
@@ -31,8 +32,9 @@ if __name__ == "__main__":
     n_clusters = 20
     sample_size = 3
 
-    output_dir = f"./result/frames_change_delta/{first_frame}_{end_frame}_{skip}/"
+    output_dir = f"./result/{data_name}/frames_change_delta/{first_frame}_{end_frame}_{skip}/"
     darray2video = NDARRAY2VIDEO(pc_array_path, output_dir)
+
     label_history = [] # 各点のラベルの推移
     data_per_labels = [] # 各セグメンテーションのラベルごとのデータ数
     all_iter = (end_frame - first_frame) // skip
