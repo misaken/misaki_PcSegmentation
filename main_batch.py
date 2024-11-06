@@ -11,7 +11,7 @@ from tools import *
 
 if __name__ == "__main__":
     t_s = time.time()
-    pc_array_path = "./data/pointclouds/bodyHands_REGISTRATIONS_A04/A04_pc_array.pkl"
+    pc_array_path = "./data/pointclouds/bodyHands_REGISTRATIONS_A01/A01_pc_array.pkl"
     data_name = re.search(r'([^/]+)(?=\.pkl$)', pc_array_path).group(1)
 
     with open(pc_array_path, "rb") as f:
@@ -21,13 +21,14 @@ if __name__ == "__main__":
     print(f"n_frame={n_frame}")
     # 各フレームの差分からクラスタリング
     first_frame = 0
+    first_frame = 140
     end_frame = n_frame - 1 # 最終フレームのインデックス
-    # end_frame = 40
+    end_frame = 150
     skip = 10
     t = 1.0e-3 #誤差範囲
     # d = n_points//20 #誤差範囲t以下の点がd個以上であれば正しい剛体変換
     batch_size = 10000
-    n_clusters = 20
+    n_clusters = 20 # 求める剛体変換の最大個数
     sample_size = 3
 
     output_dir = f"./result/{data_name}/frames/{first_frame}_{end_frame}_{skip}/"
@@ -82,13 +83,27 @@ if __name__ == "__main__":
             refined_T = svd2T(X[zero_idx[most_fitted_inlier_idx]], Y[zero_idx[most_fitted_inlier_idx]])
             refined_Y_pred = rigid_transform(refined_T, X[zero_idx]) #再度求めた剛体変換を、ラベル0全てにかける
             refined_inlier_idx = ((Y[zero_idx] - refined_Y_pred)**2).sum(axis=1) < t
-            # 再度求めたinlierをクラスタとして登録
-            cluster_labels[zero_idx[refined_inlier_idx]] = label
+            
+            # 各クラスタ内でDBSCANを行う場合はTrue
+            spacial_clustering = False
+            if spacial_clustering:
+                # 空間的に分かれている部分は別のクラスタに割り振りなおす。
+                spacial_labels = dbscan(pc[0][zero_idx[refined_inlier_idx]])
+                # いったんノイズの点もラベル振ることにする。
+                if -1 in np.unique(spacial_labels):
+                    spacial_labels = spacial_labels + 1
+                cluster_labels[zero_idx[refined_inlier_idx]] = spacial_labels + label
+            else:
+                # 再度求めたinlierをクラスタとして登録
+                cluster_labels[zero_idx[refined_inlier_idx]] = label
             print(f"{label}`s n_inlier={refined_inlier_idx.sum()}")
             cluster_inlier = np.append(cluster_inlier, refined_inlier_idx.sum())
             print(f"T=\n{np.round(refined_T, 4)}")
             points_for_genT = np.concatenate([points_for_genT, X[most_fitted_sampled_idx].reshape([1, sample_size, 3])])
-            label += 1
+            if spacial_clustering:
+                label += np.unique(spacial_labels).shape[0]
+            else:
+                label += 1
     
         zero_idx = np.where(cluster_labels == 0)[0]
         cluster_inlier = np.insert(cluster_inlier, 0, zero_idx.shape[0])

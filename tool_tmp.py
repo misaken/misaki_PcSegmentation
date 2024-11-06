@@ -473,7 +473,7 @@ class MyKMeans():
         # ((points - points_centroids.reshape([points_centroids.shape[0], 1, points.shape[1]]))**2).sum(axis=2, dtype=float)
         pass
 
-    def calc_dictance(self, X, idx=None, Y=None, metrics=None):
+    def calc_distance(self, X, idx=None, Y=None, metrics=None):
         """行列Xと、X[idx]の各点との距離を求める
         Args:
             X(ndarray): (n_samples, n_features)の行列
@@ -499,7 +499,8 @@ class MyKMeans():
             elif metrics == "l2":
                 distances = ((X - X[idx].reshape([len(idx), 1, X.shape[1]]))**2).sum(axis=2, dtype=float)
             else:
-                sys.exit("Could not fid such a metrics. Select another one.")
+                print("Could not fid such a metrics. Select another one.")
+                sys.exit(1)
             distances[np.arange(len(idx)), idx] = np.inf
         elif Y is not None:
             if metrics == "l0":
@@ -507,7 +508,8 @@ class MyKMeans():
             elif metrics == "l2":
                 distances = ((X - Y.reshape([Y.shape[0], 1, X.shape[1]]))**2).sum(axis=2, dtype=float)
             else:
-                sys.exit("Could not fid such a metrics. Select another one.")
+                print("Could not fid such a metrics. Select another one.")
+                sys.exit(1)
         return distances
 
     def fit(self, X, pc=None):
@@ -518,8 +520,13 @@ class MyKMeans():
         Return:
             ndarray: labels per samples. (n_samples, )
         """
+        if self.metrics == "l0l2" and pc is None:
+            print("metricsが'l0l2'の場合は、引数pcに三次元空間座標を与えてください")
+            sys.exit(1)
         n_samples = X.shape[0]
         n_features = X.shape[1]
+        alpha_labelVec = 0.7 # クラスタリングでラベル遷移ベクトルと三次元空間座標の両方を用いるときの重み
+        alpha_spatial = 1.0 - alpha_labelVec
 
         if self.metrics == "l0" or self.metrics == "l2":
             # k-means++で初期値を決定
@@ -531,7 +538,7 @@ class MyKMeans():
                 #     distance_tmp = self.custom_distance_old(X, X[centroids_idx[j]])
                 #     distance_tmp[centroids_idx[j]] = np.inf # クラスタ中心自身との距離が最小になるのを防ぐために、無限にしておく
                 #     distances = np.vstack([distances, distance_tmp])
-                distances = self.calc_dictance(X=X, idx=centroids_idx)
+                distances = self.calc_distance(X=X, idx=centroids_idx)
                 min_distances = distances.min(axis=0) # 各点の最近傍クラスタ中心までの距離
                 mask = np.ones(n_samples, dtype=bool) # クラスタ中心以外のインデックスマスク
                 mask[centroids_idx[:i]] = False
@@ -541,42 +548,89 @@ class MyKMeans():
             centroids_idx = []
             centroids_idx.append(self.random_state.randint(n_samples))
             for i in range(1, self.n_clusters):
-                label_distances = self.calc_dictance(X=X, idx=centroids_idx, metrics="l0")
-                min_label_distances = label_distances.min(axis=0)
-                point_distances = self.calc_dictance(X=pc, idx=centroids_idx, metrics="l2")
-                min_point_distances = point_distances.min(axis=0)
+                labelVec_distances = self.calc_distance(X=X, idx=centroids_idx, metrics="l0")
+                min_label_distances = labelVec_distances.min(axis=0)
+                spatial_distances = self.calc_distance(X=pc, idx=centroids_idx, metrics="l2")
+                min_spatial_distances = spatial_distances.min(axis=0)
+
+                min_distances = alpha_labelVec*min_label_distances + alpha_spatial*min_spatial_distances
+
                 mask = np.ones(n_samples, dtype=bool) # クラスタ中心以外のインデックスマスク
                 mask[centroids_idx[:i]] = False
-                # pr = min_distances[mask] / min_distances[mask].sum() # 次に取る初期値の確率分布
-                pr = (min_label_distances[mask] + min_point_distances[mask]) / (min_label_distances[mask] + min_point_distances[mask]).sum()
+                
+                pr = min_distances[mask] / min_distances[mask].sum()
                 centroids_idx.append(int(self.random_state.choice(np.arange(n_samples)[mask], size=1, replace=False, p=pr)[0]))
+        else:
+            print("そのようなmetricsは無効です")
+            sys.exit(1)
+        
         pdb.set_trace()
         # クラスタ中心の初期値を描画 テストなので適当 点群のパスは引数Xに応じて修正して
         # ndarray2video = NDARRAY2VIDEO("./data/pointclouds/bodyHands_REGISTRATIONS_A01/A01_pc_array.pkl", "./", dir_rm=False)
         # ndarray2video.create(frame_idx=[0], points_idx=centroids_idx, file_names=["first_cluster_centroids"], create_video=False)
         past_labels = None
         labels = np.zeros(n_samples) - 1
-        centroids = X[centroids_idx]
+
+        if self.metrics == "l0" or self.metrics == "l2":
+            centroids = X[centroids_idx]
+        elif self.metrics == "l0l2":
+            centroids_labelVec = X[centroids_idx]
+            centroids_spatial = pc[centroids_idx]
+        # centroids = X[centroids_idx]
+        
         iter_cnt = 0
         while (past_labels != labels).sum() != 0 and iter_cnt < self.max_iter:
-            distances = self.calc_dictance(X=X, Y=centroids)
             past_labels = labels
-            # labels = distances.argmin(axis=0) # 距離が最小のクラスタ中心に各点を割り当てる。
-            # 同じ距離の点があるときはランダムに割り振るようにする。
-            tmp_labels = []
-            for c in range(distances.shape[1]):
-                tmp_labels.append(self.random_state.choice(np.where((distances == distances.min(axis=0))[:, c])[0]))
-            labels = np.array(tmp_labels)
-            # ndarray2video.create(labels=labels, frame_idx=[0], file_names=[f"my_KMeans_{iter_cnt}"], create_video=False) # ラベルが変わっていってるか確認。
-            # クラスタ中心を再計算
-            # pdb.set_trace()
-            centroids = np.empty((0, n_features), dtype=float)
-            for c in range(self.n_clusters):
-                cluster_mask = (labels == c)
-                centroid = X[cluster_mask].sum(axis=0) / int(cluster_mask.sum())
-                centroids = np.vstack([centroids, centroid])
-            if self.metrics == "l0":
-                centroids = np.round(centroids) # 要素が異なる個数をカウントするので、小数だとまずい。偶数丸めで一桁に(型はfloat)。
-            iter_cnt += 1
+
+            if self.metrics == "l0" or self.metrics == "l2":
+                distances = self.calc_distance(X=X, Y=centroids)
+                # 1. 距離が最小のクラスタ中心に各点を割り当てる。
+                # labels = distances.argmin(axis=0)
+                
+                # 2. 同じ距離の点があるときはランダムに割り振るようにする。
+                tmp_labels = []
+                for c in range(distances.shape[1]):
+                    tmp_labels.append(self.random_state.choice(np.where((distances == distances.min(axis=0))[:, c])[0]))
+                labels = np.array(tmp_labels)
+                pdb.set_trace()
+                # クラスタ中心を再計算
+                # centroids = np.empty((0, n_features), dtype=float)
+                # for c in range(self.n_clusters):
+                #     cluster_mask = (labels == c)
+                #     centroid = X[cluster_mask].sum(axis=0) / int(cluster_mask.sum())
+                #     centroids = np.vstack([centroids, centroid])
+                for c in range(self.n_clusters):
+                    cluster_mask = (labels == c)
+                    centroid = X[cluster_mask].sum(axis=0) / int(cluster_mask.sum())
+                    centroids[c] = centroid
+                if self.metrics == "l0":
+                    centroids = np.round(centroids) # 要素が異なる個数をカウントするので、小数だとまずい。偶数丸めで一桁に(型はfloat)。
+            
+            elif self.metrics == "l0l2":
+                # 各クラスタ中心との距離を求める
+                labelVec_distances = self.calc_distance(X=X, idx=centroids_labelVec, metrics="l0")
+                spatial_distances = self.calc_distance(X=pc, Y=centroids_spatial, metrics="l2")
+                distances = (alpha_labelVec * labelVec_distances) + (alpha_spatial * spatial_distances)
+                # 1. 距離が最小のクラスタ中心に各点を割り当てる。
+                # labels = distances.argmin(axis=0)
+                
+                # 2. 同じ距離の点があるときはランダムに割り振るようにする。
+                tmp_labels = []
+                for c in range(distances.shape[1]):
+                    tmp_labels.append(self.random_state.choice(np.where((distances == distances.min(axis=0))[:, c])[0]))
+                labels = np.array(tmp_labels)
+                
+                # クラスタ中心を再計算
+                # pdb.set_trace()
+                centroids = np.empty((0, n_features), dtype=float)
+                for c in range(self.n_clusters):
+                    cluster_mask = (labels == c)
+                    centroid = X[cluster_mask].sum(axis=0) / int(cluster_mask.sum())
+                    centroids = np.vstack([centroids, centroid])
+                if self.metrics == "l0":
+                    centroids = np.round(centroids) # 要素が異なる個数をカウントするので、小数だとまずい。偶数丸めで一桁に(型はfloat)。
+            
+            
             print(iter_cnt, np.unique(labels))
+            iter_cnt += 1
         return labels
