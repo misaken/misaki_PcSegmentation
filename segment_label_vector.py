@@ -7,9 +7,9 @@ from scipy.cluster.hierarchy import fcluster
 from sklearn.metrics import pairwise_distances
 
 
-labels_path = "result/A01_pc_array/frames/0_589_10_old/label_history.pkl"
-pc_array_path = "./data/pointclouds/bodyHands_REGISTRATIONS_A01/A01_pc_array.pkl"
-output_dir = "./result/A01_pc_array/frames/0_589_10_old/"
+labels_path = "result/A04_pc_array/frames/0_188_10/label_history.pkl"
+pc_array_path = "./data/pointclouds/bodyHands_REGISTRATIONS_A04/A04_pc_array.pkl"
+output_dir = "./result/A04_pc_array/frames/0_188_10/"
 
 def whitening(X: np.ndarray):
     """ whitening
@@ -176,10 +176,10 @@ if __name__ == "__main__":
         # mykmeans = MyKMeans(k, metrics=metrics, random_seed=0)
         # labels = mykmeans.fit(label_history.T)
         # file_name += f"_MyK-means{k}_{metrics}"
-        metrics = "l0"
+        metrics = "l0l2"
         k = 12
         mykmeans = MyKMeans(k, metrics=metrics, random_seed=0)
-        labels = mykmeans.fit(label_history.T)
+        labels = mykmeans.fit(label_history.T, pc[0])
         file_name += f"_MyK-means{k}_{metrics}"
     elif clustering == "k-means_custom":
         metrics = "l0"
