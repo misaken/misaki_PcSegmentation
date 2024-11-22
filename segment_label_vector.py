@@ -1,15 +1,12 @@
 import os, pickle, pdb
 import numpy as np
 from sklearn.cluster import KMeans, DBSCAN
-from tools import *
 from scipy.cluster.hierarchy import dendrogram, linkage
 from scipy.cluster.hierarchy import fcluster
-from sklearn.metrics import pairwise_distances
-
-
-labels_path = "result/A04_pc_array/frames/0_188_10/label_history.pkl"
-pc_array_path = "./data/pointclouds/bodyHands_REGISTRATIONS_A04/A04_pc_array.pkl"
-output_dir = "./result/A04_pc_array/frames/0_188_10/"
+from matplotlib import pyplot as plt
+# from tools.tools import *
+from tools.tool_clustering import *
+from tools.tool_plot import *
 
 def whitening(X: np.ndarray):
     """ whitening
@@ -129,6 +126,10 @@ def hierarchical_clustering(X):
 
 
 if __name__ == "__main__":
+    labels_path = "result/A04_pc_array/frames/0_188_10/label_history.pkl"
+    pc_array_path = "./data/pointclouds/bodyHands_REGISTRATIONS_A04/A04_pc_array.pkl"
+    output_dir = "./result/A04_pc_array/frames/0_188_10/"
+    
     file_name = "segmentated_"
     darray2video = NDARRAY2VIDEO(pc_array_path, output_dir, dir_rm=False)
     
@@ -178,8 +179,8 @@ if __name__ == "__main__":
         # file_name += f"_MyK-means{k}_{metrics}"
         metrics = "l0l2"
         k = 12
-        mykmeans = MyKMeans(k, metrics=metrics, random_seed=0)
-        labels = mykmeans.fit(label_history.T, pc[0])
+        mykmeans = MyKMeans(metrics=metrics, random_seed=0)
+        labels = mykmeans.fit(k=k, X=label_history.T, pc=pc[0], labelVec_weight=0.7)
         file_name += f"_MyK-means{k}_{metrics}"
     elif clustering == "k-means_custom":
         metrics = "l0"
@@ -193,8 +194,13 @@ if __name__ == "__main__":
         labels = dbscan_vec_spac(label_history, pc[0])
         file_name += "_dbscanVecSpac"
     # labels = hierarchical_clustering(label_history)
+    
     darray2video = NDARRAY2VIDEO(pc_array_path, output_dir, dir_rm=False)
     darray2video.create(labels=labels, frame_idx=[0], file_names=[file_name], create_video=False)
+
+    # ラベルの保存
+    with open(output_dir + file_name + ".pkl", "wb") as f:
+        pickle.dump(labels, f)
 
 
     # label_history = label_history.T

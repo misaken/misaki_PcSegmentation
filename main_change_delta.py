@@ -8,8 +8,9 @@
 ##########################################################################################################################################################
 import numpy as np
 import pdb, pickle, time, sys, re
-
-from tools import *
+from tools.tool_plot import *
+from tools.tool_RigidTransform import *
+from tools.tool_etc import *
 
 if __name__ == "__main__":
     t_s = time.time()
