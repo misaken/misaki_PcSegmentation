@@ -126,9 +126,9 @@ def hierarchical_clustering(X):
 
 
 if __name__ == "__main__":
-    labels_path = "result/A04_pc_array/frames/0_188_10/label_history.pkl"
-    pc_array_path = "./data/pointclouds/bodyHands_REGISTRATIONS_A04/A04_pc_array.pkl"
-    output_dir = "./result/A04_pc_array/frames/0_188_10/"
+    labels_path = "result/A01_pc_array/frames/0_589_10_old/label_history.pkl"
+    pc_array_path = "./data/pointclouds/bodyHands_REGISTRATIONS_A01/A01_pc_array.pkl"
+    output_dir = "./result/A01_pc_array/frames/0_589_10_old/"
     
     file_name = "segmentated_"
     darray2video = NDARRAY2VIDEO(pc_array_path, output_dir, dir_rm=False)
@@ -138,15 +138,17 @@ if __name__ == "__main__":
     with open(pc_array_path, "rb") as f:
         pc = pickle.load(f)
     
-    preprocessing = "whitening"
-    preprocessing = "normalization"
-    preprocessing = ["whitening", "normalization"]
-    preprocessing = ["normalization"]
-    preprocessing = None
     
+    preprocessing = ["whitening", "normalization"]
+    # preprocessing = "normalization"
+    preprocessing = "whitening"
+    preprocessing = ["whitening"]
+    preprocessing = None
+
     # clustering = "k-means"
+    clustering = "my_k-medoids"
     # clustering = "k-means_custom"
-    clustering = "my_k-means"
+    # clustering = "my_k-means"
     # clustering = "dbscan"
     # clustering = "dbscan_vec_spac"
 
@@ -180,6 +182,17 @@ if __name__ == "__main__":
         metrics = "l0l2"
         k = 12
         mykmeans = MyKMeans(metrics=metrics, random_seed=0)
+        labels = mykmeans.fit(k=k, X=label_history.T, pc=pc[0], labelVec_weight=0.7)
+        file_name += f"_MyK-means{k}_{metrics}"
+    elif clustering == "my_k-medoids":
+        # metrics = "l0"
+        # k = 12
+        # mykmeans = MyKMeans(k, metrics=metrics, random_seed=0)
+        # labels = mykmeans.fit(label_history.T)
+        # file_name += f"_MyK-means{k}_{metrics}"
+        metrics = "l0"
+        k = 12
+        mykmeans = MyKMedoids(metrics=metrics, random_seed=0)
         labels = mykmeans.fit(k=k, X=label_history.T, pc=pc[0], labelVec_weight=0.7)
         file_name += f"_MyK-means{k}_{metrics}"
     elif clustering == "k-means_custom":

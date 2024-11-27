@@ -32,7 +32,10 @@ if __name__ == "__main__":
     n_clusters = 20 # 求める剛体変換の最大個数
     sample_size = 3
 
-    output_dir = f"./result/{data_name}/frames/{first_frame}_{end_frame}_{skip}_{t}/"
+    spacial_clustering = False # 剛体変換を求めたあと、DBSCANで空間的に分割するか
+
+    output_dir = f"./result/{data_name}/frames/{first_frame}_{end_frame}_{skip}_{t}{'_withDBSCAN' if spacial_clustering else ''}/"
+    
     darray2video = NDARRAY2VIDEO(pc_array_path, output_dir)
     
     label_history = [] # 各点のラベルの推移
@@ -86,7 +89,6 @@ if __name__ == "__main__":
             refined_inlier_idx = ((Y[zero_idx] - refined_Y_pred)**2).sum(axis=1) < t
             
             # 各クラスタ内でDBSCANを行う場合はTrue
-            spacial_clustering = False
             if spacial_clustering:
                 # 空間的に分かれている部分は別のクラスタに割り振りなおす。
                 spacial_labels = dbscan(pc[0][zero_idx[refined_inlier_idx]])
