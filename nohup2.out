@@ -2639,3 +2639,108 @@ colors =
 (189, 6890, 7)
 fin
 *******************************    frame 160 and 170  (17/18)     *****************************
+########    start to calc 1th cluster. cluster_unique=[0], label 0 num: 6890    ########
+iteration:  1 / 4
+could not find R : 4
+most fitted inlier T`s num: 5772
+iteration:  2 / 4
+could not find R : 4
+iteration:  3 / 4
+could not find R : 4
+iteration:  4 / 4
+could not find R : 4
+1`s n_inlier=5660
+T=
+[[ 0.999  -0.0132  0.0428 -0.0072]
+ [ 0.0118  0.9994  0.033  -0.0143]
+ [-0.0432 -0.0324  0.9985 -0.0063]
+ [ 0.      0.      0.      1.    ]]
+########    start to calc 2th cluster. cluster_unique=[0 1], label 0 num: 1230    ########
+iteration:  1 / 4
+could not find R : 5
+most fitted inlier T`s num: 963
+iteration:  2 / 4
+could not find R : 5
+iteration:  3 / 4
+could not find R : 5
+iteration:  4 / 4
+could not find R : 5
+2`s n_inlier=900
+T=
+[[ 0.9894  0.004  -0.1451  0.0181]
+ [ 0.0086  0.9963  0.0859 -0.0054]
+ [ 0.1449 -0.0862  0.9857 -0.0089]
+ [ 0.      0.      0.      1.    ]]
+########    start to calc 3th cluster. cluster_unique=[0 1 2], label 0 num: 330    ########
+iteration:  1 / 4
+could not find R : 3
+most fitted inlier T`s num: 330
+iteration:  2 / 4
+could not find R : 3
+iteration:  3 / 4
+could not find R : 3
+iteration:  4 / 4
+could not find R : 3
+3`s n_inlier=330
+T=
+[[ 0.9978 -0.0526  0.0403 -0.0012]
+ [ 0.0513  0.9981  0.0342 -0.0125]
+ [-0.0421 -0.032   0.9986 -0.044 ]
+ [ 0.      0.      0.      1.    ]]
+The number of label 0 is smaller than sample size.
+
+RANSAC finished
+label unique: [1 2 3]
+labels` inlier num: [   0. 5660.  900.  330.]
+
+colors = 
+[[1. 0. 0.]
+ [0. 1. 0.]
+ [0. 0. 1.]]
+(189, 6890, 7)
+fin
+*******************************    frame 170 and 180  (18/18)     *****************************
+########    start to calc 1th cluster. cluster_unique=[0], label 0 num: 6890    ########
+iteration:  1 / 4
+could not find R : 3
+most fitted inlier T`s num: 6771
+iteration:  2 / 4
+could not find R : 3
+iteration:  3 / 4
+could not find R : 3
+iteration:  4 / 4
+could not find R : 3
+1`s n_inlier=6805
+T=
+[[ 0.9975 -0.0334  0.0623 -0.0182]
+ [ 0.0327  0.9994  0.0128 -0.0016]
+ [-0.0627 -0.0107  0.998  -0.0125]
+ [ 0.      0.      0.      1.    ]]
+########    start to calc 2th cluster. cluster_unique=[0 1], label 0 num: 85    ########
+iteration:  1 / 4
+could not find R : 7
+most fitted inlier T`s num: 85
+iteration:  2 / 4
+could not find R : 7
+iteration:  3 / 4
+could not find R : 7
+iteration:  4 / 4
+could not find R : 7
+2`s n_inlier=85
+T=
+[[ 0.9835 -0.0945  0.1542  0.0153]
+ [ 0.1     0.9946 -0.028   0.0202]
+ [-0.1507  0.0429  0.9876 -0.0499]
+ [ 0.      0.      0.      1.    ]]
+The number of label 0 is smaller than sample size.
+
+RANSAC finished
+label unique: [1 2]
+labels` inlier num: [   0. 6805.   85.]
+
+colors = 
+[[1. 0. 0.]
+ [0. 1. 1.]]
+(189, 6890, 7)
+fin
+time : 2800.704925060272
