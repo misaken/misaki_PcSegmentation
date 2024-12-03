@@ -4,12 +4,12 @@
 
 from sklearn.cluster import DBSCAN
 import numpy as np
-import sys, pdb
+import sys, pdb, pickle
 
 
 def dbscan(X):
     eps = 0.1
-    min_samples = 10
+    min_samples = 5
 
     dbscan = DBSCAN(eps=eps, min_samples=min_samples)
     dbscan.fit(X)
@@ -99,8 +99,10 @@ class MyKMeans():
     def fit(self, k, X, labelVec_weight, pc=None):
         """calc labels
         Args:
+            k(int): クラスタ数
             X(ndarray): (n_samples, n_features)
-            pc(ndarray): (n_samples, 3)。metricsがl0l2のときのみ。三次元点群座標。
+            labelVec_weight(float): l0l2のときのみ.ラベル遷移ベクトルと空間的距離を結合する際のラベル側の割合.
+            pc(ndarray): default None. (n_samples, 3)。metricsがl0l2のときのみ。三次元点群座標。
         Return:
             ndarray: labels per samples. (n_samples, )
         """
@@ -308,11 +310,13 @@ class MyKMedoids():
             distances[np.arange(len(idx)), idx] = np.inf
         return distances
 
-    def fit(self, k, X, labelVec_weight, pc=None):
+    def fit(self, k, X, labelVec_weight=None, pc=None):
         """calc labels
         Args:
+            k(int): クラスタ数
             X(ndarray): (n_samples, n_features)
-            pc(ndarray): (n_samples, 3)。metricsがl0l2のときのみ。三次元点群座標。
+            labelVec_weight(float): default None. l0l2のときのみ.ラベル遷移ベクトルと空間的距離を結合する際のラベル側の割合.
+            pc(ndarray): default None. (n_samples, 3)。metricsがl0l2のときのみ。三次元点群座標。
         Return:
             ndarray: labels per samples. (n_samples, )
         """
@@ -321,8 +325,10 @@ class MyKMedoids():
             sys.exit(1)
         n_samples = X.shape[0]
         n_features = X.shape[1]
-        alpha_labelVec = labelVec_weight # クラスタリングでラベル遷移ベクトルと三次元空間座標の両方を用いるときの重み
-        alpha_spatial = 1.0 - alpha_labelVec
+
+        if labelVec_weight is not None:
+            alpha_labelVec = labelVec_weight # クラスタリングでラベル遷移ベクトルと三次元空間座標の両方を用いるときの重み
+            alpha_spatial = 1.0 - alpha_labelVec
 
         # k-means++で初期値を決定
         centroids_idx = []
@@ -395,7 +401,7 @@ class MyKMedoids():
                 # クラスタ中心を再計算
                 for c in range(k):
                     cluster_mask = (labels == c)
-                    centroid = X[cluster_mask].sum(axis=0) / cluster_mask.sum()
+                    centroid = np.median(X[cluster_mask], axis=0).astype(int)
                     centroids[c] = centroid
                 if self.metrics == "l0":
                     centroids = np.round(centroids) # 要素が異なる個数をカウントするので、小数だとまずい。全部ことなる要素になってしまう。偶数丸めで一桁に(型はfloat)。

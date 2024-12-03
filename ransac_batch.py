@@ -24,7 +24,6 @@ if __name__ == "__main__":
     # 各フレームの差分からクラスタリング
     first_frame = 0
     end_frame = n_frame - 1 # 最終フレームのインデックス
-    # end_frame = 110
     skip = 10
     t = 1.0e-3 #誤差範囲
     # d = n_points//20 #誤差範囲t以下の点がd個以上であれば正しい剛体変換
@@ -32,9 +31,9 @@ if __name__ == "__main__":
     n_clusters = 20 # 求める剛体変換の最大個数
     sample_size = 3
 
-    spacial_clustering = False # 剛体変換を求めたあと、DBSCANで空間的に分割するか
+    spatial_clustering = True # 剛体変換を求めたあと、DBSCANで空間的に分割するか
 
-    output_dir = f"./result/{data_name}/frames/{first_frame}_{end_frame}_{skip}_{t}{'_withDBSCAN' if spacial_clustering else ''}/"
+    output_dir = f"./result/{data_name}/frames/{first_frame}_{end_frame}_{skip}_{t}{'_withDBSCAN' if spatial_clustering else ''}/"
     
     darray2video = NDARRAY2VIDEO(pc_array_path, output_dir)
     
@@ -89,13 +88,17 @@ if __name__ == "__main__":
             refined_inlier_idx = ((Y[zero_idx] - refined_Y_pred)**2).sum(axis=1) < t
             
             # 各クラスタ内でDBSCANを行う場合はTrue
-            if spacial_clustering:
+            # ノイズを-1ラベルに一時的にしておいて、最後にラベル0にする
+            if spatial_clustering:
                 # 空間的に分かれている部分は別のクラスタに割り振りなおす。
-                spacial_labels = dbscan(pc[0][zero_idx[refined_inlier_idx]])
-                # いったんノイズの点もラベル振ることにする。
-                if -1 in np.unique(spacial_labels):
-                    spacial_labels = spacial_labels + 1
-                cluster_labels[zero_idx[refined_inlier_idx]] = spacial_labels + label
+                spatial_labels = dbscan(pc[0][zero_idx[refined_inlier_idx]])
+                print(f"spatial label unique: {np.unique(spatial_labels)}")
+                if -1 in np.unique(spatial_labels):
+                    # いったんノイズの点もラベル振ることにする。
+                    # spatial_labels = spatial_labels + 1
+                    #ノイズをすべて-1にして、あとから0ラベルにする
+                    spatial_labels[spatial_labels==-1] = -label - 1
+                cluster_labels[zero_idx[refined_inlier_idx]] = spatial_labels + label
             else:
                 # 再度求めたinlierをクラスタとして登録
                 cluster_labels[zero_idx[refined_inlier_idx]] = label
@@ -103,11 +106,16 @@ if __name__ == "__main__":
             cluster_inlier = np.append(cluster_inlier, refined_inlier_idx.sum())
             print(f"T=\n{np.round(refined_T, 4)}")
             points_for_genT = np.concatenate([points_for_genT, X[most_fitted_sampled_idx].reshape([1, sample_size, 3])])
-            if spacial_clustering:
-                label += np.unique(spacial_labels).shape[0]
+            if spatial_clustering:
+                # label += np.unique(spatial_labels).shape[0] # ノイズも別ラベルのとき
+                label += int((np.unique(spatial_labels) != -label-1).sum()) # ノイズはすべて0番ラベルのとき
             else:
                 label += 1
-    
+        
+        # DBSCANでノイズの点のラベルを一時的に-1にしていたので、0に戻す。
+        if spatial_clustering:
+            cluster_labels[cluster_labels==-1] = 0
+
         zero_idx = np.where(cluster_labels == 0)[0]
         cluster_inlier = np.insert(cluster_inlier, 0, zero_idx.shape[0])
         label_history.append(cluster_labels)
