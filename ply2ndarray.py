@@ -1,6 +1,7 @@
 ################################################################################################
 # plyファイルの点群データをndarrayにしてpickleで保存
 # < 実行方法 > コマンドラインから下記のように実行
+# python ply2ndarray.py データパス plyファイル名
 # python ply2ndarray.py "./data/pointclouds/bodyHands_REGISTRATIONS_A01/" "./A01_pc_array.pkl"
 ################################################################################################
 
@@ -18,7 +19,7 @@ def ply2ndarray(data_path, pkl_path):
         points = np.asarray(point_cloud.points)
         points_array.append(points)
     points_array = np.stack(points_array)
-    with open(pkl_path, "wb") as f:
+    with open(data_path+pkl_path, "wb") as f:
         pickle.dump(points_array, f)
 
 if __name__ == "__main__":

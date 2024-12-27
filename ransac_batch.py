@@ -13,17 +13,17 @@ from tools.tool_clustering import *
 
 if __name__ == "__main__":
     t_s = time.time()
-    pc_array_path = "./data/pointclouds/bodyHands_REGISTRATIONS_A04/A04_pc_array.pkl"
+    pc_array_path = "./data/pointclouds/bodyHands_REGISTRATIONS_A06/A06_pc_array.pkl"
     data_name = re.search(r'([^/]+)(?=\.pkl$)', pc_array_path).group(1)
 
     with open(pc_array_path, "rb") as f:
         pc = pickle.load(f)
-    n_frame = pc.shape[0]
+    n_frames = pc.shape[0]
     n_points = pc.shape[1]
-    print(f"n_frame={n_frame}")
+    print(f"n_frames={n_frames}")
     # 各フレームの差分からクラスタリング
     first_frame = 0
-    end_frame = n_frame - 1 # 最終フレームのインデックス
+    end_frame = n_frames # 最終フレームのインデックス
     skip = 10
     t = 1.0e-3 #誤差範囲
     # d = n_points//20 #誤差範囲t以下の点がd個以上であれば正しい剛体変換
@@ -38,10 +38,10 @@ if __name__ == "__main__":
     darray2video = NDARRAY2VIDEO(pc_array_path, output_dir)
     
     label_history = [] # 各点のラベルの推移
-    all_iter = (end_frame - first_frame) // skip
+    n_all_iter = (end_frame - first_frame) // skip
     iter_cnt = 1
-    for i in range(first_frame, end_frame-skip+1, skip):
-        print(f"*******************************    frame {i} and {i+skip}  ({iter_cnt}/{all_iter})     *****************************")
+    for i in range(first_frame, end_frame-skip, skip):
+        print(f"*******************************    frame {i} and {i+skip}  ({iter_cnt}/{n_all_iter})     *****************************")
         sys.stdout.flush() # nohup.outに書き込むように、明示的にフラッシュ
         X = pc[i]
         # Y = pc[i+skip-1]

@@ -56,7 +56,7 @@ class NDARRAY2VIDEO:
             output_path = os.path.join(self.output_dir, f'{file_name}.png')
         else:
             output_path = os.path.join(self.output_dir, f'frame_{frame_number:04d}.png')
-        plt.savefig(output_path)
+        plt.savefig(output_path, dpi=300)
         plt.close()
 
     def create_video_from_frames(self, video_path, frame_rate=30):
@@ -131,7 +131,7 @@ class NDARRAY2VIDEO:
         #     Line2D([0], [0], marker='o', color=[1, 0, 0], label='Label 0', markersize=10, linestyle='None'),
         #     Line2D([0], [0], marker='o', color=[0, 1, 0], label='Label 1', markersize=10, linestyle='None')
         # ]
-        hues = np.linspace(0, 1, num_colors, endpoint=False)  # Hueを0から1まで20等分
+        hues = np.linspace(0, 1, num_colors, endpoint=False)  # Hueを0から1までn等分
         self.colors = np.array([self.hsv_to_rgb(h, 1.0, 1.0) for h in hues])  # RGBに変換
         if 0 in unique_labels: # matplotのlegendを設定
             self.custom_lines = [Line2D([0], [0], marker='o', color=self.colors[l], label=l, markersize=5, linestyle='None') for l in unique_labels]
@@ -175,7 +175,7 @@ class NDARRAY2VIDEO:
         Args:
             labels: 点に対する一次配列のラベル。Noneの場合はラベルなしで描画。
             frame_idx: 描画するフレームを指定。Noneの場合は全フレーム描画。
-            points_idx: 描画する点のインデックスを指定。
+            points_idx: 描画する点のインデックスを指定。これを指定しても、labelsでは全点に対するラベルを与える必要がある。
             file_names: 描画するフレームごとのタイトル。frame_idxがNoneで無いときのみ利用可能。frame_idxと同じサイズ。
             create_video: 動画を生成するか否か。Falseの場合はフレームのみ生成。
         """

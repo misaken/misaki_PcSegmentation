@@ -126,10 +126,13 @@ def hierarchical_clustering(X):
 
 
 if __name__ == "__main__":
-    labels_path = "result/A04_pc_array/frames/0_188_10_0.001_withDBSCAN_eps0.1N5_NoizeSameLabel/label_history.pkl"
-    pc_array_path = "./data/pointclouds/bodyHands_REGISTRATIONS_A04/A04_pc_array.pkl"
-    output_dir = "./result/A04_pc_array/frames/0_188_10_0.001_withDBSCAN_eps0.1N5_NoizeSameLabel/"
-    
+    # labels_path = "result/A04_pc_array/frames/0_188_10_0.001_withDBSCAN_eps0.1N5_NoizeSameLabel/label_history.pkl"
+    labels_path = "result/B01_pc_array/frames/0_295_10_0.001_withDBSCAN/label_history.pkl"
+    # pc_array_path = "./data/pointclouds/bodyHands_REGISTRATIONS_A04/A04_pc_array.pkl"
+    pc_array_path = "data/pointclouds/bodyHands_REGISTRATIONS_B01/B01_pc_array.pkl"
+    # output_dir = "./result/A04_pc_array/frames/0_188_10_0.001_withDBSCAN_eps0.1N5_NoizeSameLabel/"
+    output_dir = "result/B01_pc_array/frames/0_295_10_0.001_withDBSCAN/"
+
     file_name = "segmentated_"
     darray2video = NDARRAY2VIDEO(pc_array_path, output_dir, dir_rm=False)
     
@@ -191,8 +194,8 @@ if __name__ == "__main__":
         # labels = mykmeans.fit(label_history.T)
         # file_name += f"_MyK-means{k}_{metrics}"
         metrics = "l0"
-        k = 12
-        mykmedoids = MyKMedoids(metrics=metrics, random_seed=2)
+        k = 18
+        mykmedoids = MyKMedoids(metrics=metrics, random_seed=0)
         labels = mykmedoids.fit(k=k, X=label_history.T)
         file_name += f"_MyK-medoids{k}_{metrics}"
     elif clustering == "k-means_custom":
