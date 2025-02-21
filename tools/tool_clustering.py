@@ -5,6 +5,7 @@
 from sklearn.cluster import DBSCAN
 import numpy as np
 import sys, pdb, pickle
+from tools.tool_plot import *
 
 
 def dbscan(X):
@@ -248,7 +249,13 @@ class MyKMeans():
 
 
 class MyKMedoids():
-    def __init__(self, metrics, max_iter=100, random_seed=0):
+    def __init__(self, metrics, max_iter=100, random_seed=0, plot_progress=False, pc_array_path=None, output_dir=None):
+        """
+        Args:
+            plot_progress(boolean): クラスタリングの途中経過をプロットするか否か
+            pc_array_path(str): plot_progressがTrueの場合のみ必要
+            output_dir(str): plot_progressがTrueの場合のみ必要
+        """
         self.max_iter = max_iter
         self.random_state = np.random.RandomState(random_seed)
         self.metrics = metrics
@@ -256,6 +263,10 @@ class MyKMedoids():
         self.centroids = None
         self.centroids_labelVec = None
         self.centroids_spatial = None
+        self.plot_progress = plot_progress
+        if plot_progress:
+            self.darray2video = NDARRAY2VIDEO(pc_array_path, output_dir, dir_rm=False)
+
     
     def calc_distance(self, X, idx=None, Y=None, metrics=None, preprocessing=None):
         """行列Xと、X[idx]の各点との距離を求める
@@ -270,7 +281,7 @@ class MyKMedoids():
         """
         if metrics is None: # metricsが指定されていない場合は、initでのmetricsを指定
             metrics = self.metrics
-        
+
         if idx is None and Y is None:
             print("距離の比較対象がありません。idxかYを与えてください。")
             sys.exit(1)
@@ -344,6 +355,7 @@ class MyKMedoids():
                 min_distances = distances.min(axis=0) # 各点の最近傍クラスタ中心までの距離
                 mask = np.ones(n_samples, dtype=bool) # クラスタ中心以外のインデックスマスク
                 mask[centroids_idx[:i]] = False
+                # pdb.set_trace()
                 pr = min_distances[mask] / min_distances[mask].sum() # 次に取る初期値の確率分布
                 centroids_idx.append(int(self.random_state.choice(np.arange(n_samples)[mask], size=1, replace=False, p=pr)[0]))
         elif self.metrics == "l0l2":
@@ -383,6 +395,7 @@ class MyKMedoids():
         # centroids = X[centroids_idx]
         
         iter_cnt = 0
+        changed_num_array = []
         while (past_labels != labels).sum() != 0 and iter_cnt < self.max_iter:
             past_labels = labels
 
@@ -422,7 +435,6 @@ class MyKMedoids():
                     tmp_labels.append(self.random_state.choice(np.where((distances == distances.min(axis=0))[:, c])[0]))
                 labels = np.array(tmp_labels)
                 
-                # pdb.set_trace()
                 # クラスタ中心を再計算
                 for c in range(k):
                     cluster_mask = (labels == c)
@@ -438,7 +450,20 @@ class MyKMedoids():
                 print(centroids_labelVec)
                 print(centroids_spatial)
             
-            print(iter_cnt, np.unique(labels))
+            changed_num = (past_labels != labels).sum()
+            changed_num_array.append(changed_num)
+            print(f"{iter_cnt}: {changed_num} changed")
+            if self.plot_progress:
+                self.darray2video.create(labels=labels, frame_idx=[0], file_names=[f"progress{iter_cnt}"], create_video=False)
             iter_cnt += 1
+        
+        changed_num_array = np.array(changed_num_array)
+        # 折れ線グラフをプロット
+        plt.plot(changed_num_array)
+        plt.title("Line Plot of ndarray")
+        plt.xlabel("iteration")
+        plt.ylabel("Number of changed cluster")
+        plt.savefig('./result/A04_pc_array/plot.png')
+
         self.distances = distances
         return labels

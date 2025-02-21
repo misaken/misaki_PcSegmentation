@@ -6,9 +6,23 @@ from tools.tool_plot import *
 from collections import defaultdict, deque
 from tools.tool_graph import *
 
-pc_array_path = "./data/pointclouds/bodyHands_REGISTRATIONS_A04/A04_pc_array.pkl"
+# pc_array_path = "./data/pointclouds/bodyHands_REGISTRATIONS_A04/A04_pc_array.pkl"
 # output_path = "./result/A04_pc_array/DVariance_allPoints/0_188_10/"
-output_path = "./result/A04_pc_array/DVariance_allPoints/0_188_10/"
+# mesh_path = "./data/pointclouds/bodyHands_REGISTRATIONS_A04/0000.ply"
+
+# pc_array_path = "./data/pointclouds/bodyHands_REGISTRATIONS_A11/A11_pc_array.pkl"
+# output_path = "./result/A11_pc_array/DVariance_allPoints/0_792_10/"
+# mesh_path = "./data/pointclouds/bodyHands_REGISTRATIONS_A11/0000.ply"
+
+# pc_array_path = "./data/SAPIEN/8961/SAPIEN_8961_pc_array.pkl"
+# output_path = "./result/SAPIEN_8961_pc_array/DVariance_allPoints/0_60_5/"
+# mesh_path = "./data/SAPIEN/8961/mesh.ply"
+
+pc_array_path = "./data/SAPIEN/101387/SAPIEN_101387_pc_array.pkl"
+output_path = "./result/SAPIEN_101387_pc_array/DVariance_allPoints/0_60_5/"
+mesh_path = "./data/SAPIEN/101387/mesh.ply"
+
+
 with open(output_path+"var_distances.pkl", "rb") as f:
     var_distances = pickle.load(f)
 sqrt_var_distances = np.sqrt(var_distances)
@@ -16,9 +30,11 @@ with open(pc_array_path, "rb") as f:
     pc = pickle.load(f)
 n_frames = pc.shape[0]
 
-mesh = o3d.io.read_triangle_mesh("./data/pointclouds/bodyHands_REGISTRATIONS_A04/0000.ply")
+mesh = o3d.io.read_triangle_mesh(mesh_path)
 ver = np.asarray(mesh.vertices)
 tri = np.asarray(mesh.triangles)
+
+pdb.set_trace()
 
 n_points = ver.shape[0]
 
@@ -30,7 +46,8 @@ for t in tri:
     for i in range(3):
         for j in range(i + 1, 3):
             idx1, idx2 = t[i], t[j]
-            A[idx1, idx2] = A[idx2, idx1] = sqrt_var_distances[idx1, idx2]
+             # SAPIENの場合、剛体ないで完全に距離の変化がないためにグラフの可視化が出来ない。対策で微小な値を加算
+            A[idx1, idx2] = A[idx2, idx1] = sqrt_var_distances[idx1, idx2]+1.0e-8
 sample_size = n_points
 points_idx = range(sample_size)
 # ########################
@@ -154,23 +171,21 @@ points_idx = range(sample_size)
 #             A[idx1, idx2] = A[idx2, idx1] = sqrt_var_distances[idx1, idx2]
 ############################
 
-
-
 # A = (1 / var_distances)
 A = (1/A)
 A[A==np.inf] = 0 #分散が大きいものはnp.infにしているのでAにinfが残ることはないと思うが、足切り忘れ対策で残す。
+# A[np.isnan(A)] = 0 # var_distancesのルートを取ったことで、小さすぎる値がnanになる。そのため、本来は1/Aでnanは無限になるはずなので、nanも同様に0に置換する。
 
-
-
-# # Aの要素の分布図
-# tril_idx = np.tril_indices(sample_size, k=-1)
-# plt.hist(A[tril_idx], bins=np.linspace(A[tril_idx].min(), A[tril_idx].max(), 30))
-# plt.xlabel('Value')
-# plt.ylabel('Frequency')
-# plt.xlim(A[tril_idx].min(), A[tril_idx].max())
-# plt.title('Histogram of Data')
-# plt.savefig(output_path+"hist_A_tril.png")
-# plt.close()
+pdb.set_trace()
+# Aの要素の分布図
+tril_idx = np.tril_indices(sample_size, k=-1)
+plt.hist(A[tril_idx], bins=np.linspace(A[tril_idx].min(), A[tril_idx].max(), 30))
+plt.xlabel('Value')
+plt.ylabel('Frequency')
+plt.xlim(A[tril_idx].min(), A[tril_idx].max())
+plt.title('Histogram of Data')
+plt.savefig(output_path+"hist_A_tril.png")
+plt.close()
 
 # pdb.set_trace()
 
@@ -183,32 +198,35 @@ A[A==np.inf] = 0 #分散が大きいものはnp.infにしているのでAにinf�
 D = np.zeros([sample_size, sample_size])
 D[range(sample_size), range(sample_size)] = A.sum(axis=1)
 
-
+# SAPIENデータセットを用いた場合は、次数行列Dの対角成分に0が発生する。そのためラプラシアン行列の固有値分解ができないため、Dに微小な値を加える。
+D[range(sample_size), range(sample_size)] += 1.0e-9
 
 
 L = D-A
 
-# # Dの対角成分の分布図見てみる
-# plt.hist(D[(np.arange(n_points), np.arange(n_points))], bins=np.linspace(D[(np.arange(n_points), np.arange(n_points))].min(), D[(np.arange(n_points), np.arange(n_points))].max(), 30))
-# plt.xlabel('Value')
+# Dの対角成分の分布図見てみる
+plt.hist(D[(np.arange(n_points), np.arange(n_points))], bins=np.linspace(D[(np.arange(n_points), np.arange(n_points))].min(), D[(np.arange(n_points), np.arange(n_points))].max(), 30))
+plt.xlabel('Value')
 
-# plt.ylabel('Frequency')
-# plt.xlim(D[(np.arange(n_points), np.arange(n_points))].min(), D[(np.arange(n_points), np.arange(n_points))].max())
-# plt.title('Histogram of Data')
-# plt.savefig(output_path+"hist_D_tril.png")
-# plt.close()
+plt.ylabel('Frequency')
+plt.xlim(D[(np.arange(n_points), np.arange(n_points))].min(), D[(np.arange(n_points), np.arange(n_points))].max())
+plt.title('Histogram of Data')
+plt.savefig(output_path+"hist_D_tril.png")
+plt.close()
 
+
+pdb.set_trace()
 # 対称正規化ラプラシアンにする
 L = np.sqrt(np.linalg.inv(D)) @ L @ np.sqrt(np.linalg.inv(D))
 
 # Lの下三角行列の対角成分を除いた要素の分布図見てみる
-# plt.hist(L[np.tril_indices(sample_size, k=-1)], bins=np.linspace(L[np.tril_indices(sample_size, k=-1)].min(), L[np.tril_indices(sample_size, k=-1)].max(), 30))
-# plt.xlabel('Value')
-# plt.ylabel('Frequency')
-# plt.xlim(L[np.tril_indices(sample_size, k=-1)].min(), L[np.tril_indices(sample_size, k=-1)].max())
-# plt.title('Histogram of Data')
-# plt.savefig(output_path+"hist_normedL_tril.png")
-# plt.close()
+plt.hist(L[np.tril_indices(sample_size, k=-1)], bins=np.linspace(L[np.tril_indices(sample_size, k=-1)].min(), L[np.tril_indices(sample_size, k=-1)].max(), 30))
+plt.xlabel('Value')
+plt.ylabel('Frequency')
+plt.xlim(L[np.tril_indices(sample_size, k=-1)].min(), L[np.tril_indices(sample_size, k=-1)].max())
+plt.title('Histogram of Data')
+plt.savefig(output_path+"hist_normedL_tril.png")
+plt.close()
 
 with open(output_path+"L.pkl", "wb") as f:
     pickle.dump(L, f)
@@ -225,7 +243,7 @@ values = values.cpu().numpy()
 vectors = vectors.cpu().numpy()
 L = L.cpu().numpy()
 
-k = 12 #クラスタ数
+k = 3 #クラスタ数
 v_sorted_idx = np.argsort(values)
 x = vectors[v_sorted_idx[1]] #0を除く最小固有値に対応する固有ベクトル
 # x = vectors[v_sorted_idx[1: 1+k]] #0を除く最小固有値に対応する固有ベクトル
@@ -261,7 +279,8 @@ plt.savefig(output_path+"eigen_vector_map.png", dpi=300)
 
 
 
-kmeans = KMeans(n_clusters=12, init='k-means++', random_state=0)
+
+kmeans = KMeans(n_clusters=k, init='k-means++', random_state=0)
 kmeans.fit(X=x.reshape([-1, 1]))
 # kmeans.fit(X=x.reshape([n_points, -1]))
 
@@ -283,7 +302,7 @@ with open(output_path+"labels.pkl", "wb") as f:
 pdb.set_trace()
 
 darray2video = NDARRAY2VIDEO(pc_array_path, output_path, dir_rm=False)
-darray2video.create(labels=labels_tmp, frame_idx=[0], points_idx=list(points_idx), file_names=["spectral_clustering_12"], create_video=False)
+darray2video.create(labels=labels_tmp, frame_idx=[0], points_idx=list(points_idx), file_names=[f"spectral_clustering_{k}"], create_video=False)
 
 
 

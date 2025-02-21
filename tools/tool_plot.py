@@ -42,16 +42,16 @@ class NDARRAY2VIDEO:
         fig = plt.figure()
         ax = fig.add_subplot(111, projection='3d')
         if points.shape[1]==7:
-            ax.scatter(points[:, 0], -points[:, 2], points[:, 1], c=points[:, 3:6], marker='o', s=1, label=points[:, 6])
+            ax.scatter(points[:, 0], -points[:, 2], points[:, 1], c=points[:, 3:6], marker='o', s=0.3, label=points[:, 6])
         else:
-            ax.scatter(points[:, 0], -points[:, 2], points[:, 1], marker='o', s=1)
+            ax.scatter(points[:, 0], -points[:, 2], points[:, 1], marker='o', s=0.3)
         ax.set_xlim([-1, 1])
         ax.set_ylim([-1, 1])
         ax.set_zlim([-1, 1])
         ax.set_title(f'Frame {frame_number}')
 
         # 凡例表示
-        fig.legend(handles=self.custom_lines, loc="upper left")
+        fig.legend(handles=self.custom_lines, loc="upper left", fontsize=9)
         if file_name != None:
             output_path = os.path.join(self.output_dir, f'{file_name}.png')
         else:

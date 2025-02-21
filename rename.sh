@@ -9,16 +9,28 @@
 # $ ffmpeg -framerate 5 -i frame_%03d.png -i palette.png -filter_complex "paletteuse" output.gif
 ##################################################################################################
 
-counter=1
+counter=0
 frame_path=$1
 
 echo $frame_path
-echo "file path": $frame_path/frame_1.png
 
-for file in $frame_path/frame_*.png; do
-  new_filename=$(printf $frame_path"/frame_%03d.png" "$counter")
+for file in $frame_path/progress*.png; do
+  new_filename=$(printf $frame_path"/progress%03d.png" "$counter")
 
   mv "$file" "$new_filename"
 
   counter=$((counter + 1))
 done
+# counter=1
+# frame_path=$1
+
+# echo $frame_path
+# echo "file path": $frame_path/frame_1.png
+
+# for file in $frame_path/frame_*.png; do
+#   new_filename=$(printf $frame_path"/frame_%03d.png" "$counter")
+
+#   mv "$file" "$new_filename"
+
+#   counter=$((counter + 1))
+# done

@@ -16,7 +16,11 @@ from tools.tool_plot import *
 
 if __name__ == "__main__":
     t_s = time.time()
-    pc_array_path = "./data/pointclouds/bodyHands_REGISTRATIONS_A04/A04_pc_array.pkl"
+    # pc_array_path = "./data/pointclouds/bodyHands_REGISTRATIONS_A04/A04_pc_array.pkl"
+    # pc_array_path = "./data/pointclouds/bodyHands_REGISTRATIONS_A11/A11_pc_array.pkl"
+    # pc_array_path = "./data/SAPIEN/8961/SAPIEN_8961_pc_array.pkl"
+    pc_array_path = "./data/SAPIEN/101387/SAPIEN_101387_pc_array.pkl"
+    
     data_name = re.search(r'([^/]+)(?=\.pkl$)', pc_array_path).group(1)
 
     with open(pc_array_path, "rb") as f:
@@ -25,10 +29,10 @@ if __name__ == "__main__":
     n_frames = pc.shape[0]
     n_points = pc.shape[1]
     # n_points = 4
-    
+
     first_frame = 0
-    end_frame = n_frames -1 # 最終フレームのインデックス
-    skip = 10
+    end_frame = n_frames # 最終フレームのインデックス
+    skip = 5
 
     output_dir = f"./result/{data_name}/DVariance_allPoints/{first_frame}_{end_frame}_{skip}/"
     
@@ -38,8 +42,9 @@ if __name__ == "__main__":
     sum_distances_squared = np.zeros([n_points, n_points])
     sum_distances = np.zeros([n_points, n_points])
 
-    n_all_iter = ((end_frame - first_frame) // skip) + 1
-    for i in range(first_frame, end_frame+1, skip):
+    n_all_iter = (end_frame - first_frame) // skip
+    
+    for i in range(first_frame, end_frame, skip):
         print(i)
         X = pc[i]
         # X = np.random.choice(range(5), size=[4, 3])
@@ -53,6 +58,10 @@ if __name__ == "__main__":
     avg_distances_squared = sum_distances_squared / n_all_iter
     avg_distances = sum_distances / n_all_iter
     var_distances = avg_distances_squared - avg_distances**2
+    
+    # sqrt()を行ったときに、浮動小数点の誤差が発生し、その影響で一部の分散が-1.0e-19みたいな値を取ってしまう。
+    # 一応np.where(var_distances<-0.000000001)で確かめた結果、何も無かった。そのため、マイナスの値を取っているものは全て0に置換する。
+    var_distances[var_distances<0] = 0
     
     with open(output_dir+"avg_distances.pkl", "wb") as f:
         pickle.dump(avg_distances, f)

@@ -13,7 +13,10 @@ from tools.tool_clustering import *
 
 if __name__ == "__main__":
     t_s = time.time()
-    pc_array_path = "./data/pointclouds/bodyHands_REGISTRATIONS_A06/A06_pc_array.pkl"
+    # pc_array_path = "./data/pointclouds/bodyHands_REGISTRATIONS_A04/A04_pc_array.pkl"
+    # pc_array_path = "./data/SAPIEN/8961/SAPIEN_8961_pc_array.pkl"
+    pc_array_path = "./data/SAPIEN/101387/SAPIEN_101387_pc_array.pkl"
+    # pc_array_path = "./data/pointclouds/bodyHands_REGISTRATIONS_A11/A11_pc_array.pkl"
     data_name = re.search(r'([^/]+)(?=\.pkl$)', pc_array_path).group(1)
 
     with open(pc_array_path, "rb") as f:
@@ -24,14 +27,14 @@ if __name__ == "__main__":
     # 各フレームの差分からクラスタリング
     first_frame = 0
     end_frame = n_frames # 最終フレームのインデックス
-    skip = 10
+    skip = 5
     t = 1.0e-3 #誤差範囲
     # d = n_points//20 #誤差範囲t以下の点がd個以上であれば正しい剛体変換
     batch_size = 10000
     n_clusters = 20 # 求める剛体変換の最大個数
     sample_size = 3
 
-    spatial_clustering = True # 剛体変換を求めたあと、DBSCANで空間的に分割するか
+    spatial_clustering = False # 剛体変換を求めたあと、DBSCANで空間的に分割するか
 
     output_dir = f"./result/{data_name}/frames/{first_frame}_{end_frame}_{skip}_{t}{'_withDBSCAN' if spatial_clustering else ''}/"
     
@@ -125,7 +128,7 @@ if __name__ == "__main__":
 
 
         # darray2video = NDARRAY2VIDEO(pc_array_path)
-        darray2video.plot_sampled_points(points_for_genT, np.unique(cluster_labels))
+        # darray2video.plot_sampled_points(points_for_genT, np.unique(cluster_labels))
         # darray2video.create(labels=cluster_labels)
         darray2video.create(labels=cluster_labels, frame_idx=[i+skip], create_video=False)
 

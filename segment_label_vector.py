@@ -127,11 +127,24 @@ def hierarchical_clustering(X):
 
 if __name__ == "__main__":
     # labels_path = "result/A04_pc_array/frames/0_188_10_0.001_withDBSCAN_eps0.1N5_NoizeSameLabel/label_history.pkl"
-    labels_path = "result/B01_pc_array/frames/0_295_10_0.001_withDBSCAN/label_history.pkl"
     # pc_array_path = "./data/pointclouds/bodyHands_REGISTRATIONS_A04/A04_pc_array.pkl"
-    pc_array_path = "data/pointclouds/bodyHands_REGISTRATIONS_B01/B01_pc_array.pkl"
     # output_dir = "./result/A04_pc_array/frames/0_188_10_0.001_withDBSCAN_eps0.1N5_NoizeSameLabel/"
-    output_dir = "result/B01_pc_array/frames/0_295_10_0.001_withDBSCAN/"
+
+    # labels_path = "./result/A11_pc_array/frames/0_793_10_0.001_withDBSCAN/label_history.pkl"
+    # pc_array_path = "./data/pointclouds/bodyHands_REGISTRATIONS_A11/A11_pc_array.pkl"
+    # output_dir = "./result/A11_pc_array/frames/0_793_10_0.001_withDBSCAN/"
+
+    # labels_path = "./result/SAPIEN_101387_pc_array/frames/0_60_5_0.001_withDBSCAN/label_history.pkl"
+    # pc_array_path = "./data/SAPIEN/101387/SAPIEN_101387_pc_array.pkl"
+    # output_dir = "./result/SAPIEN_101387_pc_array/frames/0_60_5_0.001_withDBSCAN/"
+    
+    # labels_path = "./result/SAPIEN_8961_pc_array/frames/0_60_5_0.001_withDBSCAN/label_history.pkl"
+    # pc_array_path = "./data/SAPIEN/8961/SAPIEN_8961_pc_array.pkl"
+    # output_dir = "./result/SAPIEN_8961_pc_array/frames/0_60_5_0.001_withDBSCAN/"
+
+    labels_path = "./result/SAPIEN_8961_pc_array/frames/0_60_5_0.001/label_history.pkl"
+    pc_array_path = "./data/SAPIEN/8961/SAPIEN_8961_pc_array.pkl"
+    output_dir = "./result/SAPIEN_8961_pc_array/frames/0_60_5_0.001/"
 
     file_name = "segmentated_"
     darray2video = NDARRAY2VIDEO(pc_array_path, output_dir, dir_rm=False)
@@ -140,7 +153,6 @@ if __name__ == "__main__":
         label_history = pickle.load(f)
     with open(pc_array_path, "rb") as f:
         pc = pickle.load(f)
-    
     
     preprocessing = ["whitening", "normalization"]
     # preprocessing = "normalization"
@@ -184,9 +196,10 @@ if __name__ == "__main__":
         # file_name += f"_MyK-means{k}_{metrics}"
         metrics = "l0l2"
         k = 12
-        mykmeans = MyKMeans(metrics=metrics, random_seed=7)
+        seed = 0
+        mykmeans = MyKMeans(metrics=metrics, random_seed=seed)
         labels = mykmeans.fit(k=k, X=label_history.T, pc=pc[0], labelVec_weight=0.7)
-        file_name += f"_MyK-means{k}_{metrics}"
+        file_name += f"_MyK-means{k}_{metrics}_seed{seed}"
     elif clustering == "my_k-medoids":
         # metrics = "l0"
         # k = 12
@@ -194,10 +207,11 @@ if __name__ == "__main__":
         # labels = mykmeans.fit(label_history.T)
         # file_name += f"_MyK-means{k}_{metrics}"
         metrics = "l0"
-        k = 18
-        mykmedoids = MyKMedoids(metrics=metrics, random_seed=0)
+        k = 2
+        seed = 0
+        mykmedoids = MyKMedoids(metrics=metrics, random_seed=seed, plot_progress=False, pc_array_path=pc_array_path, output_dir=output_dir)
         labels = mykmedoids.fit(k=k, X=label_history.T)
-        file_name += f"_MyK-medoids{k}_{metrics}"
+        file_name += f"_MyK-medoids{k}_{metrics}_seed{seed}"
     elif clustering == "k-means_custom":
         metrics = "l0"
         k = 12
@@ -212,6 +226,7 @@ if __name__ == "__main__":
     # labels = hierarchical_clustering(label_history)
     
     darray2video = NDARRAY2VIDEO(pc_array_path, output_dir, dir_rm=False)
+    file_name += "frame60"
     darray2video.create(labels=labels, frame_idx=[0], file_names=[file_name], create_video=False)
 
     # ラベルの保存
