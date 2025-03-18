@@ -61,7 +61,7 @@ def svd2T(X, Y):
     """ 剛体変換を推定
     Args:
         X, Y(ndarray): (num_points, 3)の配列
-    Return:
+    Returns:
         ndarray: 剛体変換T.(4, 4)の同次座標系
     """
     # pdb.set_trace()

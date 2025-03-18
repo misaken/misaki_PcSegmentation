@@ -1,10 +1,12 @@
-import os, pickle, pdb
+##################################################################################################
+## ラベル遷移ベクトルをクラスタリングすることで、物体表面点群のセグメンテーションを行う。
+## 
+##
+##################################################################################################
+
+import pickle, pdb
 import numpy as np
-from sklearn.cluster import KMeans, DBSCAN
-from scipy.cluster.hierarchy import dendrogram, linkage
-from scipy.cluster.hierarchy import fcluster
-from matplotlib import pyplot as plt
-# from tools.tools import *
+from sklearn.cluster import KMeans
 from tools.tool_clustering import *
 from tools.tool_plot import *
 
@@ -28,12 +30,19 @@ def whitening(X: np.ndarray):
     return X_white
 
 def normalize(X):
-    """各点のベクトルの大きさが1になるように正規化"""
+    """各点のラベル遷移ベクトルのL2ノルムが1になるように正規化"""
     norms = np.linalg.norm(X, axis=0, keepdims=True)
     X_normalized = X / norms
     return X_normalized
 
 def k_means(X, k):
+    """sklearnのk-means++クラスタリング。距離尺度はL2に限定される
+    Args:
+        X(ndarray): (n_features, n_points)の形状
+        k(int): クラスタ数
+    Returns:
+        labels(ndarray): ラベル
+    """
     X = X.T
     n_clusters = k
     kmeans = KMeans(n_clusters=n_clusters, init='k-means++', random_state=42)
@@ -46,89 +55,16 @@ def k_means(X, k):
     # pdb.set_trace()
     return labels
 
-def k_means_custom_d(X, k, metrics="l0"):
-    X = X.T # (点の数, ラベル遷移ベクトルのサイズ)の行列になるように転置
-    # 距離行列の計算
-    if metrics == "l0":
-        n_data = X.shape[0]
-        d_mat = np.zeros((n_data, n_data))
-        for i in range(n_data):
-            d_mat[i, :] = (X != X[i]).sum(axis=1)
-    else:
-        print("距離行列を求めるさいにそのmetricsは指定できません。")
-        exit(1)
-    
-    n_clusters = k
-    kmeans = KMeans(n_clusters=n_clusters, init='k-means++', random_state=42)
-    kmeans.fit(d_mat)
-
-    labels = kmeans.labels_
-    centroids = kmeans.cluster_centers_
-    print("クラスタラベル:", labels)
-    print("クラスタの重心:\n", centroids)
-    # pdb.set_trace()
-    return labels
-
-def custom_d(p1, p2, vector_alpha=0.8):
-    spatial_d = np.linalg.norm(p1[:3] - p2[:3])
-    vector_d = np.linalg.norm(p1[3:] - p2[3:])
-    return vector_alpha * vector_d + (1 - vector_alpha) * spatial_d
-
-def dbscan_vec_spac(label_history, pc):
-    """ DBCSANの距離関数として、ベクトル間の距離と空間的な距離の両方を用いるように変更したもの。
-    Args:
-        label_history(ndarray): (点の数, ラベル遷移ベクトル)の行列。
-        pc(ndarray): (点の数, 3)の行列。とりあえず0番目のフレームの点群を与える。
-    Return:
-        ndarray: 各点のラベル
-    """
-    label_history = label_history.T #(6890, 18)
-    data = np.concatenate((pc, label_history), axis=1)
-    eps = 0.1
-    min_samples = 50
-
-    dbscan = DBSCAN(eps=eps, min_samples=min_samples, metric=lambda p1, p2: custom_d(p1, p2))
-    dbscan.fit(data)
-
-    labels = dbscan.labels_
-    print("クラスタラベル:", labels)
-    return labels
-
-def dbscan(X):
-    X = X.T
-    eps = 0.1
-    min_samples = 30
-
-    dbscan = DBSCAN(eps=eps, min_samples=min_samples)
-    dbscan.fit(X)
-
-    labels = dbscan.labels_
-    print("クラスタラベル:", labels)
-    return labels
-    
-
-def hierarchical_clustering(X):
-    X = X.T
-    # 階層的クラスタリングのためのlinkage matrixの計算
-    Z = linkage(X, method='ward')  # 'ward', 'complete', 'average', 'single'
-    
-    # デンドログラム
-    plt.figure(figsize=(10, 7))
-    plt.title("Dendrogram")
-    dendrogram(Z)
-    plt.savefig("tmp.png")
-
-    max_d = 80.0  # クラスタを切り取る距離
-    labels = fcluster(Z, max_d, criterion='distance')
-
-    print("クラスタラベル:", labels)
-    return labels
-
 
 if __name__ == "__main__":
-    # labels_path = "result/A04_pc_array/frames/0_188_10_0.001_withDBSCAN_eps0.1N5_NoizeSameLabel/label_history.pkl"
-    # pc_array_path = "./data/pointclouds/bodyHands_REGISTRATIONS_A04/A04_pc_array.pkl"
-    # output_dir = "./result/A04_pc_array/frames/0_188_10_0.001_withDBSCAN_eps0.1N5_NoizeSameLabel/"
+    """ラベル遷移ベクトルのクラスタリングを行う。
+    論文内の、「剛体変換に基づく手法」を行う場合は、ラベル遷移ベクトルの前処理なしで、k-medoidsで行えば良い。
+    """
+    
+    ## 以下の４つのデータから適当に選択。異なるデータについて行う場合は適宜変更。
+    labels_path = "result/A04_pc_array/frames/0_188_10_0.001_withDBSCAN_eps0.1N5_NoizeSameLabel/label_history.pkl"
+    pc_array_path = "./data/pointclouds/bodyHands_REGISTRATIONS_A04/A04_pc_array.pkl"
+    output_dir = "./result/A04_pc_array/frames/0_188_10_0.001_withDBSCAN_eps0.1N5_NoizeSameLabel/"
 
     # labels_path = "./result/A11_pc_array/frames/0_793_10_0.001_withDBSCAN/label_history.pkl"
     # pc_array_path = "./data/pointclouds/bodyHands_REGISTRATIONS_A11/A11_pc_array.pkl"
@@ -142,9 +78,6 @@ if __name__ == "__main__":
     # pc_array_path = "./data/SAPIEN/8961/SAPIEN_8961_pc_array.pkl"
     # output_dir = "./result/SAPIEN_8961_pc_array/frames/0_60_5_0.001_withDBSCAN/"
 
-    labels_path = "./result/SAPIEN_8961_pc_array/frames/0_60_5_0.001/label_history.pkl"
-    pc_array_path = "./data/SAPIEN/8961/SAPIEN_8961_pc_array.pkl"
-    output_dir = "./result/SAPIEN_8961_pc_array/frames/0_60_5_0.001/"
 
     file_name = "segmentated_"
     darray2video = NDARRAY2VIDEO(pc_array_path, output_dir, dir_rm=False)
@@ -154,18 +87,16 @@ if __name__ == "__main__":
     with open(pc_array_path, "rb") as f:
         pc = pickle.load(f)
     
-    preprocessing = ["whitening", "normalization"]
-    # preprocessing = "normalization"
-    preprocessing = "whitening"
-    preprocessing = ["whitening"]
+    ## ラベル遷移ベクトルに対する前処理。リストの先頭から順番に行う。前処理が不要な場合はNone。
+    # preprocessing = ["whitening"]
     preprocessing = None
 
-    # clustering = "k-means"
+    ## ラベル遷移ベクトルのクラスタリング方法選択。
+    ## Frame by Frameでのラベル付けの段階で空間的制約(DBSCAN)を行っているのであれば、"my_k-medoids"。
+    ## "my_k-means"は、空間的制約を事前に与えず、クラスタリングの段階で三次元座標とラベル遷移ベクトルのクラスタリング結果を重みによって足し合わせて行う方法。
+    ## k-medoidsと同じような結果が得られるが、L0ノルムとL2ノルムを合わせるのは不適切と言う理由で非推奨。
     clustering = "my_k-medoids"
-    # clustering = "k-means_custom"
-    # clustering = "my_k-means"
-    # clustering = "dbscan"
-    # clustering = "dbscan_vec_spac"
+
 
     if preprocessing == None:
         file_name += "None"
@@ -182,18 +113,7 @@ if __name__ == "__main__":
         k =12
         labels = k_means(label_history, k)
         file_name += f"_k-means{k}"
-        # mse = []
-        # for k in range(5, 25):
-        #     kmeans = KMeans(n_clusters=k, init='k-means++', random_state=42)
-        #     kmeans.fit(label_history.T)
-        #     labels = kmeans.labels_
-        #     mse.append(kmeans.inertia_)
     elif clustering == "my_k-means":
-        # metrics = "l0"
-        # k = 12
-        # mykmeans = MyKMeans(k, metrics=metrics, random_seed=0)
-        # labels = mykmeans.fit(label_history.T)
-        # file_name += f"_MyK-means{k}_{metrics}"
         metrics = "l0l2"
         k = 12
         seed = 0
@@ -212,67 +132,11 @@ if __name__ == "__main__":
         mykmedoids = MyKMedoids(metrics=metrics, random_seed=seed, plot_progress=False, pc_array_path=pc_array_path, output_dir=output_dir)
         labels = mykmedoids.fit(k=k, X=label_history.T)
         file_name += f"_MyK-medoids{k}_{metrics}_seed{seed}"
-    elif clustering == "k-means_custom":
-        metrics = "l0"
-        k = 12
-        labels = k_means_custom_d(label_history, k, metrics)
-        file_name += f"_CustomK-means{k}_{metrics}"
-    elif clustering == "dbscan":
-        labels = dbscan(label_history)
-        file_name += "_dbscan"
-    elif clustering == "dbscan_vec_spac":
-        labels = dbscan_vec_spac(label_history, pc[0])
-        file_name += "_dbscanVecSpac"
-    # labels = hierarchical_clustering(label_history)
     
+    ## セグメンテーション結果の出力。
     darray2video = NDARRAY2VIDEO(pc_array_path, output_dir, dir_rm=False)
-    file_name += "frame60"
     darray2video.create(labels=labels, frame_idx=[0], file_names=[file_name], create_video=False)
 
-    # ラベルの保存
+    ## ラベルの保存
     with open(output_dir + file_name + ".pkl", "wb") as f:
         pickle.dump(labels, f)
-
-
-    # label_history = label_history.T
-    # pc = pc[0]
-
-    # # パラメータ設定
-    # n_clusters = 20  # 初期クラスタ数
-    # eps = 0.2       # DBSCANのeps（空間的な距離制約）
-    # min_samples = 5 # DBSCANの最小サンプル数
-
-    # # 1. ベクトルに基づく初期クラスタリング (KMeans)
-    # kmeans = KMeans(n_clusters=n_clusters)
-    # initial_labels = kmeans.fit_predict(label_history)
-    # darray2video.create(labels=initial_labels, frame_idx=[0], file_names=[f"segmentated_initial_labels"], create_video=False)
-    # # pdb.set_trace()
-
-    # # 2. DBSCANで空間的な制約を加えたクラスタリング
-    # final_labels = np.full(initial_labels.shape, -1)  # 最終的なラベル (-1は未分類)
-
-    # for cluster in range(n_clusters):
-    #     # 同じ初期クラスタに属する点を抽出
-    #     cluster_points = np.where(initial_labels == cluster)[0]
-        
-    #     # 該当クラスタの座標を抽出
-    #     cluster_coords = pc[cluster_points]
-        
-    #     # DBSCANを実行して空間的に再クラスタリング
-    #     dbscan = DBSCAN(eps=eps, min_samples=min_samples)
-    #     spatial_labels = dbscan.fit_predict(cluster_coords)
-        
-    #     # 結果を最終的なラベルに反映
-    #     for i, point_idx in enumerate(cluster_points):
-    #         if spatial_labels[i] != -1:  # ノイズでなければ
-    #             final_labels[point_idx] = cluster * 100 + spatial_labels[i]
-
-    # # 結果のラベルを表示
-    # print("最終的なラベル:", final_labels)
-    # label_cnt = {}
-    # for l in np.unique(final_labels):
-    #     label_cnt[int(l)] = int(sum(final_labels==l))
-    # print(label_cnt)
-    # # pdb.set_trace()
-    # final_labels = np.arange(final_labels.shape[0])
-    # darray2video.create(labels=final_labels, frame_idx=[0], file_names=[f"segmentated"], create_video=False)
